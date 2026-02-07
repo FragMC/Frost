@@ -1,0 +1,260 @@
+# Frost Plugin Configuration
+# Plugin for hotbar locking, shops, and daily rewards
+# Created by Stufy for FragMC
+
+# Currency Settings
+currency:
+  symbol: "♦"  # The symbol shown before prices (e.g., ♦500)
+  format: "%symbol%%amount%"  # How prices are displayed
+  # Available placeholders: %symbol%, %amount%
+  # Examples:
+  #   "%symbol%%amount%" = ♦500
+  #   "%amount%%symbol%" = 500♦
+  #   "$%amount%" = $500
+
+# Hotbar locked items configuration
+hotbar-items:
+  enabled: true
+  auto-refill: true
+  # Item format: slot number (0-8 for hotbar)
+  items:
+    0:
+      material: WIND_CHARGE
+      amount: 1
+      display-name: ""
+      lore: []
+      enchantments: {}
+      custom-model-data: 0
+      hide-flags: []
+
+    1:
+      material: NETHERITE_SWORD  # Using NETHERITE_SWORD as placeholder for netherite_spear
+      amount: 1
+      display-name: "&bSpear"
+      lore:
+        - "&bYour spear for your journey across the landscape on FragMC"
+      enchantments:
+        LOYALTY: 3
+        UNBREAKING: 3
+      custom-model-data: 1  # This makes it appear as a spear with resource pack
+      hide-flags:
+        - ENCHANTMENTS
+        - ATTRIBUTES
+        - UNBREAKABLE
+        - DESTROYS
+        - PLACED_ON
+        - ADDITIONAL_TOOLTIP
+
+    2:
+      material: MACE
+      amount: 1
+      display-name: "&5Mace"
+      lore: []
+      enchantments:
+        WIND_BURST: 1
+        UNBREAKING: 3
+      custom-model-data: 0
+      hide-flags:
+        - ENCHANTMENTS
+        - ATTRIBUTES
+        - UNBREAKABLE
+        - DESTROYS
+        - PLACED_ON
+        - ADDITIONAL_TOOLTIP
+
+# Skin Shop Configuration
+skin-shop:
+  enabled: true
+  title: "&6&lSkin Shop"
+  # Skins for each item type
+  skins:
+    wind_charge:
+      golden_wind:
+        name: "&6Golden Wind Charge"
+        lore:
+          - "&7A golden variant of wind charge"
+          - ""
+          - "&ePrice: ♦500"
+        custom-model-data: 100
+        price: 500
+        icon: WIND_CHARGE
+
+      ice_wind:
+        name: "&bIce Wind Charge"
+        lore:
+          - "&7A frozen wind charge"
+          - ""
+          - "&ePrice: ♦750"
+        custom-model-data: 101
+        price: 750
+        icon: WIND_CHARGE
+
+    spear:
+      flame_spear:
+        name: "&cFlame Spear"
+        lore:
+          - "&7A blazing spear"
+          - ""
+          - "&ePrice: ♦1000"
+        custom-model-data: 10
+        price: 1000
+        icon: NETHERITE_SWORD
+
+      ice_spear:
+        name: "&bIce Spear"
+        lore:
+          - "&7A frozen spear"
+          - ""
+          - "&ePrice: ♦1000"
+        custom-model-data: 11
+        price: 1000
+        icon: NETHERITE_SWORD
+
+      void_spear:
+        name: "&5Void Spear"
+        lore:
+          - "&7A spear from the void"
+          - ""
+          - "&ePrice: ♦1500"
+        custom-model-data: 12
+        price: 1500
+        icon: NETHERITE_SWORD
+
+    mace:
+      golden_mace:
+        name: "&6Golden Mace"
+        lore:
+          - "&7A golden mace"
+          - ""
+          - "&ePrice: ♦1000"
+        custom-model-data: 20
+        price: 1000
+        icon: MACE
+
+      obsidian_mace:
+        name: "&0Obsidian Mace"
+        lore:
+          - "&7A dark obsidian mace"
+          - ""
+          - "&ePrice: ♦1250"
+        custom-model-data: 21
+        price: 1250
+        icon: MACE
+
+# Powerup Shop Configuration
+powerup-shop:
+  enabled: true
+  title: "&d&lPowerup Shop"
+  powerups:
+    speed:
+      name: "&fSpeed Boost"
+      lore:
+        - "&7Grants Speed II for 60 seconds"
+        - ""
+        - "&ePrice: ♦100"
+      price: 100
+      icon: SUGAR
+      effects:
+        - type: SPEED
+          amplifier: 1
+          duration: 60
+
+    strength:
+      name: "&cStrength Boost"
+      lore:
+        - "&7Grants Strength II for 60 seconds"
+        - ""
+        - "&ePrice: ♦150"
+      price: 150
+      icon: BLAZE_POWDER
+      effects:
+        - type: STRENGTH
+          amplifier: 1
+          duration: 60
+
+    regeneration:
+      name: "&dRegeneration"
+      lore:
+        - "&7Grants Regeneration II for 30 seconds"
+        - ""
+        - "&ePrice: ♦200"
+      price: 200
+      icon: GHAST_TEAR
+      effects:
+        - type: REGENERATION
+          amplifier: 1
+          duration: 30
+
+    resistance:
+      name: "&7Resistance"
+      lore:
+        - "&7Grants Resistance II for 60 seconds"
+        - ""
+        - "&ePrice: ♦175"
+      price: 175
+      icon: IRON_CHESTPLATE
+      effects:
+        - type: RESISTANCE
+          amplifier: 1
+          duration: 60
+
+    jump_boost:
+      name: "&aJump Boost"
+      lore:
+        - "&7Grants Jump Boost II for 60 seconds"
+        - ""
+        - "&ePrice: ♦75"
+      price: 75
+      icon: RABBIT_FOOT
+      effects:
+        - type: JUMP_BOOST
+          amplifier: 1
+          duration: 60
+
+    fire_resistance:
+      name: "&6Fire Resistance"
+      lore:
+        - "&7Grants Fire Resistance for 120 seconds"
+        - ""
+        - "&ePrice: ♦125"
+      price: 125
+      icon: MAGMA_CREAM
+      effects:
+        - type: FIRE_RESISTANCE
+          amplifier: 0
+          duration: 120
+
+# Daily Rewards Configuration
+daily-rewards:
+  enabled: true
+  base-reward: 100
+  streak-enabled: true
+  # Streak multipliers (day -> multiplier)
+  streak-multipliers:
+    1: 1.0
+    3: 1.2
+    7: 1.5
+    14: 2.0
+    30: 2.5
+  # Maximum streak to count
+  max-streak: 30
+  # Reset time (24 hours in seconds)
+  reset-time: 86400
+
+# Messages
+messages:
+  prefix: "&8[&b❄ &fFrost&8] &r"
+  hotbar-locked: "&cYou cannot move items in your hotbar!"
+  item-refilled: "&aYour %item% has been refilled!"
+  no-permission: "&cYou don't have permission to do that!"
+  reload-success: "&aConfiguration reloaded successfully!"
+  items-given: "&aGiven hotbar items to %player%!"
+  items-reset: "&aReset hotbar items for %player%!"
+  not-enough-money: "&cYou don't have enough money! Need: &e%price%"
+  purchase-success: "&aSuccessfully purchased &e%item%&a!"
+  skin-applied: "&aSkin &e%skin% &ahas been applied to your %item%!"
+  daily-claimed: "&aYou claimed your daily reward of &e%amount%&a! Streak: &6%streak% days"
+  daily-already-claimed: "&cYou have already claimed your daily reward! Come back in &e%time%"
+  daily-streak-broken: "&cYour streak was broken! Starting from day 1."
+  shop-opened: "&aOpened %shop% shop!"
+  bedrock-player-detected: "&7(Bedrock Edition player detected)"

@@ -1,0 +1,37 @@
+name: Frost
+version: 1.0.0
+main: com.stufy.fragmc.frost.Frost
+api-version: '1.21'
+author: Stufy
+description: Hotbar locking, skin shop, powerups, and daily rewards
+depend: [Vault]
+softdepend: [floodgate]
+
+commands:
+  frost:
+    description: Main plugin command
+    usage: /frost <reload|give|reset>
+    permission: frost.admin
+    aliases: [fr]
+  shop:
+    description: Open the shop menu
+    usage: /shop [skins|powerups]
+    aliases: [fragshop]
+  dailyreward:
+    description: Claim your daily reward
+    usage: /dailyreward
+    aliases: [daily, claimreward]
+
+permissions:
+  frost.admin:
+    description: Admin commands for Frost
+    default: op
+  frost.shop:
+    description: Access to shops
+    default: true
+  frost.dailyreward:
+    description: Claim daily rewards
+    default: true
+  frost.bypass.hotbar:
+    description: Bypass hotbar locking
+    default: op
