@@ -9,10 +9,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-public class ShopCommand implements CommandExecutor {
+public class EquipCommand implements CommandExecutor {
     private final Frost plugin;
 
-    public ShopCommand(Frost plugin) {
+    public EquipCommand(Frost plugin) {
         this.plugin = plugin;
     }
 
@@ -22,7 +22,7 @@ public class ShopCommand implements CommandExecutor {
             sender.sendMessage(Component.text("Only players can use this command.", NamedTextColor.RED));
             return true;
         }
-        plugin.getGuiManager().openShop((Player) sender);
+        plugin.getGuiManager().openEquipMenu((Player) sender);
         return true;
     }
 }

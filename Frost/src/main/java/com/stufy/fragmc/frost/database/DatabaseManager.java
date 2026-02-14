@@ -1,75 +1,68 @@
 package com.stufy.fragmc.frost.database;
 
 import com.stufy.fragmc.frost.Frost;
-
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.logging.Level;
 
 public class DatabaseManager {
-
     private final Frost plugin;
     private Connection connection;
 
     public DatabaseManager(Frost plugin) {
         this.plugin = plugin;
-        connect();
-        createTables();
     }
 
-    private synchronized void connect() {
-        File dataFolder = new File(plugin.getDataFolder(), "database.db");
-        if (!plugin.getDataFolder().exists()) {
-            plugin.getDataFolder().mkdirs();
-        }
-
+    public void connect() {
         try {
-            if (connection != null && !connection.isClosed()) {
-                return;
+            File dataFolder = plugin.getDataFolder();
+            if (!dataFolder.exists()) {
+                dataFolder.mkdirs();
             }
+
+            File dbFile = new File(dataFolder, "database.db");
+            if (!dbFile.exists()) {
+                dbFile.createNewFile();
+            }
+
             Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:" + dataFolder);
-            plugin.getLogger().info("Connected to SQLite database.");
-        } catch (SQLException | ClassNotFoundException e) {
-            plugin.getLogger().severe("Could not connect to SQLite database: " + e.getMessage());
+            connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+            initDatabase();
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to connect to database", e);
         }
     }
 
-    private void createTables() {
-        String sql = "CREATE TABLE IF NOT EXISTS daily_rewards (" +
+    private void initDatabase() {
+        // Table to store player data: unlocked modifiers and selected modifiers for
+        // each item type
+        String sql = "CREATE TABLE IF NOT EXISTS player_data (" +
                 "uuid VARCHAR(36) PRIMARY KEY, " +
-                "last_claim BIGINT, " +
-                "streak INTEGER" +
+                "hotbar_locked BOOLEAN DEFAULT 1, " +
+                "unlocked_modifiers TEXT, " + // JSON string or comma separated list
+                "selected_modifiers TEXT" + // JSON string: {"hotbar_slot_index": "modifier_id"}
                 ");";
-
-        try (Statement stmt = getConnection().createStatement()) {
+        try (Statement stmt = connection.createStatement()) {
             stmt.execute(sql);
         } catch (SQLException e) {
-            plugin.getLogger().severe("Could not create tables: " + e.getMessage());
+            plugin.getLogger().log(Level.SEVERE, "Failed to initialize database tables", e);
         }
     }
 
-    public synchronized Connection getConnection() {
-        try {
-            if (connection == null || connection.isClosed()) {
-                connect();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return connection;
-    }
-
-    public void close() {
+    public void disconnect() {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Failed to close database connection", e);
         }
+    }
+
+    public Connection getConnection() {
+        return connection;
     }
 }

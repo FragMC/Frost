@@ -1,33 +1,29 @@
 package com.stufy.fragmc.frost;
 
-import com.stufy.fragmc.frost.commands.DailyRewardCommand;
+import com.stufy.fragmc.frost.commands.EquipCommand;
 import com.stufy.fragmc.frost.commands.FrostCommand;
 import com.stufy.fragmc.frost.commands.ShopCommand;
+import com.stufy.fragmc.frost.commands.ToggleLockCommand;
 import com.stufy.fragmc.frost.database.DatabaseManager;
-import com.stufy.fragmc.frost.gui.BedrockMenuHandler;
-import com.stufy.fragmc.frost.handlers.HotbarManager;
-import com.stufy.fragmc.frost.handlers.ShopManager;
-import com.stufy.fragmc.frost.handlers.DailyRewardManager;
-import com.stufy.fragmc.frost.listeners.HotbarListener;
-import com.stufy.fragmc.frost.listeners.PlayerListener;
+import com.stufy.fragmc.frost.listeners.HotbarLockListener;
+import com.stufy.fragmc.frost.managers.ConfigManager;
+import com.stufy.fragmc.frost.managers.GuiManager;
+import com.stufy.fragmc.frost.managers.ModifierManager;
+import com.stufy.fragmc.frost.managers.PlayerDataManager;
 import net.milkbowl.vault.economy.Economy;
-import org.bukkit.ChatColor;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.geysermc.floodgate.api.FloodgateApi;
-
-import java.util.logging.Level;
 
 public class Frost extends JavaPlugin {
 
     private static Frost instance;
     private Economy economy;
     private DatabaseManager databaseManager;
-    private HotbarManager hotbarManager;
-    private ShopManager shopManager;
-    private DailyRewardManager dailyRewardManager;
-    private BedrockMenuHandler bedrockMenuHandler;
-    private boolean floodgateEnabled = false;
+    private ConfigManager configManager;
+    private PlayerDataManager playerDataManager;
+    private ModifierManager modifierManager;
+    private HotbarLockListener hotbarLockListener;
+    private GuiManager guiManager;
 
     @Override
     public void onEnable() {
@@ -36,43 +32,43 @@ public class Frost extends JavaPlugin {
         // Save default config
         saveDefaultConfig();
 
-        // Setup Vault economy
-        if (!setupEconomy()) {
-            getLogger().severe("Vault or an economy plugin not found! Disabling plugin.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
+        // Setup database
+        databaseManager = new DatabaseManager(this);
+        databaseManager.connect();
 
-        // Check for Floodgate
-        if (getServer().getPluginManager().getPlugin("floodgate") != null) {
-            floodgateEnabled = true;
-            bedrockMenuHandler = new BedrockMenuHandler(this);
-            getLogger().info("Floodgate detected! Bedrock support enabled.");
+        // Setup Vault Economy
+        if (!setupEconomy()) {
+            getLogger().severe("Vault or EssentialsX not found! Economy features will be disabled.");
         }
 
         // Initialize managers
-        databaseManager = new DatabaseManager(this);
-        hotbarManager = new HotbarManager(this);
-        shopManager = new ShopManager(this);
-        dailyRewardManager = new DailyRewardManager(this);
+        configManager = new ConfigManager(this);
+        playerDataManager = new PlayerDataManager(this);
+        modifierManager = new ModifierManager(this);
+        guiManager = new GuiManager(this);
 
         // Register listeners
-        getServer().getPluginManager().registerEvents(new HotbarListener(this), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
+        hotbarLockListener = new HotbarLockListener(this);
+        getServer().getPluginManager().registerEvents(hotbarLockListener, this);
 
         // Register commands
         getCommand("frost").setExecutor(new FrostCommand(this));
         getCommand("shop").setExecutor(new ShopCommand(this));
-        getCommand("dailyreward").setExecutor(new DailyRewardCommand(this));
+        getCommand("equip").setExecutor(new EquipCommand(this));
+        getCommand("togglelock").setExecutor(new ToggleLockCommand(this));
 
         getLogger().info("Frost Plugin has been enabled!");
+        getLogger().info("Using SQLite database for player data storage");
     }
 
     @Override
     public void onDisable() {
-        // Save any data
+        if (playerDataManager != null) {
+            playerDataManager.saveAllPlayerData();
+        }
+
         if (databaseManager != null) {
-            databaseManager.close();
+            databaseManager.disconnect();
         }
 
         getLogger().info("Frost Plugin has been disabled!");
@@ -90,13 +86,6 @@ public class Frost extends JavaPlugin {
         return economy != null;
     }
 
-    public void reload() {
-        reloadConfig();
-        hotbarManager.reload();
-        shopManager.reload();
-        dailyRewardManager.reload();
-    }
-
     public static Frost getInstance() {
         return instance;
     }
@@ -109,57 +98,23 @@ public class Frost extends JavaPlugin {
         return databaseManager;
     }
 
-    public HotbarManager getHotbarManager() {
-        return hotbarManager;
+    public ConfigManager getConfigManager() {
+        return configManager;
     }
 
-    public ShopManager getShopManager() {
-        return shopManager;
+    public PlayerDataManager getPlayerDataManager() {
+        return playerDataManager;
     }
 
-    public DailyRewardManager getDailyRewardManager() {
-        return dailyRewardManager;
+    public ModifierManager getModifierManager() {
+        return modifierManager;
     }
 
-    public BedrockMenuHandler getBedrockMenuHandler() {
-        return bedrockMenuHandler;
+    public GuiManager getGuiManager() {
+        return guiManager;
     }
 
-    public boolean isFloodgateEnabled() {
-        return floodgateEnabled;
-    }
-
-    public boolean isBedrockPlayer(java.util.UUID uuid) {
-        if (!floodgateEnabled) {
-            return false;
-        }
-        try {
-            return FloodgateApi.getInstance().isFloodgatePlayer(uuid);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public String getMessage(String path) {
-        return ChatColor.translateAlternateColorCodes('&',
-                getConfig().getString("messages." + path, "&cMessage not found: " + path));
-    }
-
-    public String getPrefix() {
-        return getMessage("prefix");
-    }
-
-    public String getCurrencySymbol() {
-        return ChatColor.translateAlternateColorCodes('&',
-                getConfig().getString("currency.symbol", "♦"));
-    }
-
-    public String formatCurrency(double amount) {
-        String symbol = getCurrencySymbol();
-        String format = getConfig().getString("currency.format", "%symbol%%amount%");
-        String amountStr = String.format("%.0f", amount);
-
-        return ChatColor.translateAlternateColorCodes('&',
-                format.replace("%symbol%", symbol).replace("%amount%", amountStr));
+    public HotbarLockListener getHotbarLockListener() {
+        return hotbarLockListener;
     }
 }
