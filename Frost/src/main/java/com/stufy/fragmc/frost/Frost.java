@@ -7,9 +7,11 @@ import com.stufy.fragmc.frost.commands.ShopCommand;
 import com.stufy.fragmc.frost.commands.ToggleLockCommand;
 import com.stufy.fragmc.frost.database.DatabaseManager;
 import com.stufy.fragmc.frost.listeners.HotbarLockListener;
+import com.stufy.fragmc.frost.listeners.ParticleListener;
 import com.stufy.fragmc.frost.managers.ConfigManager;
 import com.stufy.fragmc.frost.managers.CosmeticManager;
 import com.stufy.fragmc.frost.managers.GuiManager;
+import com.stufy.fragmc.frost.managers.ParticleManager;
 import com.stufy.fragmc.frost.managers.PlayerDataManager;
 import com.stufy.fragmc.frost.managers.ProfileManager;
 import net.milkbowl.vault.economy.Economy;
@@ -26,7 +28,9 @@ public class Frost extends JavaPlugin {
     private PlayerDataManager playerDataManager;
     private ProfileManager profileManager;
     private CosmeticManager cosmeticManager;
+    private ParticleManager particleManager;
     private HotbarLockListener hotbarLockListener;
+    private ParticleListener particleListener;
     private GuiManager guiManager;
     private FrostAPI api;
 
@@ -50,6 +54,7 @@ public class Frost extends JavaPlugin {
         configManager = new ConfigManager(this);
         profileManager = new ProfileManager(this);
         cosmeticManager = new CosmeticManager(this);
+        particleManager = new ParticleManager(this);
         playerDataManager = new PlayerDataManager(this);
         guiManager = new GuiManager(this);
 
@@ -59,7 +64,9 @@ public class Frost extends JavaPlugin {
 
         // Register listeners
         hotbarLockListener = new HotbarLockListener(this);
+        particleListener = new ParticleListener(this);
         getServer().getPluginManager().registerEvents(hotbarLockListener, this);
+        getServer().getPluginManager().registerEvents(particleListener, this);
 
         // Register commands
         getCommand("frost").setExecutor(new FrostCommand(this));
@@ -74,6 +81,10 @@ public class Frost extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (particleManager != null) {
+            particleManager.cleanup();
+        }
+
         if (playerDataManager != null) {
             playerDataManager.saveAllPlayerData();
         }
@@ -123,6 +134,10 @@ public class Frost extends JavaPlugin {
 
     public CosmeticManager getCosmeticManager() {
         return cosmeticManager;
+    }
+
+    public ParticleManager getParticleManager() {
+        return particleManager;
     }
 
     public GuiManager getGuiManager() {
