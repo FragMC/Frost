@@ -43,15 +43,13 @@ public class CosmeticManager {
 
         for (String categoryId : cosmeticsSection.getKeys(false)) {
             var categorySection = cosmeticsSection.getConfigurationSection(categoryId);
-            if (categorySection == null)
-                continue;
+            if (categorySection == null) continue;
 
             String categoryName = categorySection.getString("category-name", categoryId);
             String categoryDesc = categorySection.getString("category-description", "");
             String iconMaterial = categorySection.getString("category-icon", "PAPER");
             Material icon = Material.matchMaterial(iconMaterial);
-            if (icon == null)
-                icon = Material.PAPER;
+            if (icon == null) icon = Material.PAPER;
 
             CosmeticCategory category = new CosmeticCategory(categoryId, categoryName, icon, categoryDesc);
 
@@ -82,8 +80,7 @@ public class CosmeticManager {
     }
 
     public ItemStack applyCosmetic(ItemStack item, Cosmetic cosmetic) {
-        if (item == null || cosmetic == null)
-            return item;
+        if (item == null || cosmetic == null) return item;
 
         ItemStack modified = item.clone();
         ItemMeta meta = modified.getItemMeta();
@@ -109,8 +106,8 @@ public class CosmeticManager {
                 ConfigurationSection enchants = mods.getConfigurationSection("enchantments");
                 if (enchants != null) {
                     for (String enchantName : enchants.getKeys(false)) {
-                        Enchantment enchant = Enchantment.getByKey(
-                                NamespacedKey.minecraft(enchantName.toLowerCase().replace("_", "-").replace(" ", "-")));
+                        String key = enchantName.toLowerCase().replace(" ", "_").replace("-", "_");
+                        Enchantment enchant = Enchantment.getByKey(NamespacedKey.minecraft(key));
                         if (enchant != null) {
                             meta.addEnchant(enchant, enchants.getInt(enchantName), true);
                         }
@@ -127,9 +124,9 @@ public class CosmeticManager {
                     }
                 }
             }
-
-            modified.setItemMeta(meta);
         }
+
+        modified.setItemMeta(meta);
         return modified;
     }
 
@@ -140,8 +137,7 @@ public class CosmeticManager {
         }
 
         ConfigurationSection mods = cosmetic.getModifications();
-        if (mods == null)
-            return;
+        if (mods == null) return;
 
         if (cosmetic.getAppliesType().equals("armor-set")) {
             applyArmorPiece(player, "helmet", mods.getConfigurationSection("helmet"));
@@ -174,10 +170,8 @@ public class CosmeticManager {
         }
     }
 
-    private void applyArmorPiece(Player player, String slot, ConfigurationSection mods) {
-        if (mods == null)
-            return;
-
+    private void applyArmorPiece(Player player, String slot, ConfigurationSection modsPiece) {
+        if (modsPiece == null) return;
         ItemStack piece = switch (slot.toLowerCase()) {
             case "helmet" -> player.getInventory().getHelmet();
             case "chestplate" -> player.getInventory().getChestplate();
@@ -185,25 +179,23 @@ public class CosmeticManager {
             case "boots" -> player.getInventory().getBoots();
             default -> null;
         };
-
-        if (piece == null || piece.getType() == Material.AIR)
-            return;
+        if (piece == null || piece.getType() == Material.AIR) {
+            piece = defaultArmorForSlot(slot);
+        }
+        if (piece == null || piece.getType() == Material.AIR) return;
 
         ItemMeta meta = piece.getItemMeta();
-        if (meta == null)
-            return;
+        if (meta == null) return;
 
-        if (mods.contains("custom-model-data")) {
-            meta.setCustomModelData(mods.getInt("custom-model-data"));
+        if (modsPiece.contains("custom-model-data")) {
+            meta.setCustomModelData(modsPiece.getInt("custom-model-data"));
         }
-
-        if (mods.contains("lore")) {
-            List<Component> lore = mods.getStringList("lore").stream()
+        if (modsPiece.contains("lore")) {
+            List<Component> lore = modsPiece.getStringList("lore").stream()
                     .map(line -> MiniMessage.miniMessage().deserialize(line))
                     .collect(Collectors.toList());
             meta.lore(lore);
         }
-
         piece.setItemMeta(meta);
 
         switch (slot.toLowerCase()) {
@@ -222,11 +214,9 @@ public class CosmeticManager {
             case "boots" -> player.getInventory().getBoots();
             default -> null;
         };
-        if (piece == null || piece.getType() == Material.AIR)
-            return;
+        if (piece == null || piece.getType() == Material.AIR) return;
         ItemMeta meta = piece.getItemMeta();
-        if (meta == null)
-            return;
+        if (meta == null) return;
         meta.setCustomModelData(null);
         meta.lore(null);
         piece.setItemMeta(meta);
@@ -236,5 +226,15 @@ public class CosmeticManager {
             case "leggings" -> player.getInventory().setLeggings(piece);
             case "boots" -> player.getInventory().setBoots(piece);
         }
+    }
+
+    private ItemStack defaultArmorForSlot(String slot) {
+        return switch (slot.toLowerCase()) {
+            case "helmet" -> new ItemStack(Material.LEATHER_HELMET);
+            case "chestplate" -> new ItemStack(Material.LEATHER_CHESTPLATE);
+            case "leggings" -> new ItemStack(Material.LEATHER_LEGGINGS);
+            case "boots" -> new ItemStack(Material.LEATHER_BOOTS);
+            default -> new ItemStack(Material.AIR);
+        };
     }
 }

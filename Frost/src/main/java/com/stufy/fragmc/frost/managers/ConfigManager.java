@@ -60,8 +60,8 @@ public class ConfigManager {
                 ConfigurationSection enchants = section.getConfigurationSection("enchantments");
                 if (enchants != null) {
                     for (String enchantName : enchants.getKeys(false)) {
-                        Enchantment enchant = Enchantment.getByKey(
-                                NamespacedKey.minecraft(enchantName.toLowerCase().replace("_", "-").replace(" ", "-")));
+                        String key = enchantName.toLowerCase().replace(" ", "_").replace("-", "_");
+                        Enchantment enchant = Enchantment.getByKey(NamespacedKey.minecraft(key));
                         if (enchant != null) {
                             meta.addEnchant(enchant, enchants.getInt(enchantName), true);
                         }
@@ -81,6 +81,7 @@ public class ConfigManager {
 
             item.setItemMeta(meta);
         }
+
         return item;
     }
 }

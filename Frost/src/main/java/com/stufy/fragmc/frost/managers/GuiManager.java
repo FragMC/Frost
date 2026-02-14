@@ -224,11 +224,10 @@ public class GuiManager implements Listener {
                         if (item != null) {
                             var meta = item.getItemMeta();
                             if (meta != null && meta.hasDisplayName()) {
-                                label = "Item: "
-                                        + net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
-                                                .plainText().serialize(meta.displayName());
+                                label = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
+                                        .plainText().serialize(meta.displayName());
                             } else {
-                                label = "Item: " + item.getType().name();
+                                label = prettifyMaterial(item.getType().name());
                             }
                         } else {
                             label = "Profile " + profileId + " Slot " + s;
@@ -238,9 +237,9 @@ public class GuiManager implements Listener {
                 group = label;
             } else if (categoryId.equals("armor-cosmetics")) {
                 String type = cosmetic.getAppliesType();
-                if ("armor-set".equalsIgnoreCase(type))
+                if ("armor-set".equalsIgnoreCase(type)) {
                     group = "Sets";
-                else {
+                } else {
                     String slotName = cosmetic.getAppliesArmorSlot();
                     group = slotName != null ? capitalize(slotName) : "Pieces";
                 }
@@ -376,11 +375,56 @@ public class GuiManager implements Listener {
         form.validResultHandler(response -> {
             int index = response.clickedButtonId();
             if (index >= 0 && index < categoryIds.size()) {
-                openBedrockEquipCategoryItems(player, categoryIds.get(index));
+                openBedrockEquipSubgroups(player, categoryIds.get(index));
             }
         });
 
         FloodgateApi.getInstance().sendForm(player.getUniqueId(), form.build());
+    }
+
+    private void openJavaEquipSubgroups(Player player, String categoryId) {
+        CosmeticCategory category = plugin.getCosmeticManager().getCategories().get(categoryId);
+        if (category == null)
+            return;
+
+        Inventory inv = Bukkit.createInventory(
+                null,
+                54,
+                Component.text("Equip: ")
+                        .append(MiniMessage.miniMessage().deserialize(category.getName()))
+                        .append(Component.text(" • Choose Type", NamedTextColor.GRAY)));
+
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null)
+            return;
+
+        // Back button
+        ItemStack back = new ItemStack(Material.ARROW);
+        ItemMeta backMeta = back.getItemMeta();
+        backMeta.displayName(Component.text("← Back to Categories", NamedTextColor.YELLOW));
+        backMeta.getPersistentDataContainer().set(actionKey, PersistentDataType.STRING, "back_to_equip_categories");
+        back.setItemMeta(backMeta);
+        inv.setItem(0, back);
+
+        var groups = subgroupMapForCategory(player, categoryId);
+        // Only show subgroups with at least one owned cosmetic
+        int slot = 9;
+        for (var entry : groups.entrySet()) {
+            boolean hasOwned = entry.getValue().stream()
+                    .anyMatch(c -> data.ownedCosmetics.contains(c.getId()) || player.hasPermission("frost.admin"));
+            if (!hasOwned)
+                continue;
+            ItemStack button = new ItemStack(Material.PAPER);
+            ItemMeta meta = button.getItemMeta();
+            meta.displayName(Component.text(entry.getKey(), NamedTextColor.AQUA));
+            meta.getPersistentDataContainer().set(categoryKey, PersistentDataType.STRING, categoryId);
+            meta.getPersistentDataContainer().set(subgroupKey, PersistentDataType.STRING, entry.getKey());
+            meta.getPersistentDataContainer().set(actionKey, PersistentDataType.STRING, "equip_browse_subgroup");
+            button.setItemMeta(meta);
+            inv.setItem(slot++, button);
+        }
+
+        player.openInventory(inv);
     }
 
     private void openJavaEquipCategoryItems(Player player, String categoryId) {
@@ -388,7 +432,9 @@ public class GuiManager implements Listener {
         if (category == null)
             return;
 
-        Inventory inv = Bukkit.createInventory(null, 54,
+        Inventory inv = Bukkit.createInventory(
+                null,
+                54,
                 Component.text("Equip: ").append(MiniMessage.miniMessage().deserialize(category.getName())));
 
         PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
@@ -417,7 +463,6 @@ public class GuiManager implements Listener {
             boolean owned = data.ownedCosmetics.contains(cosmetic.getId()) || player.hasPermission("frost.admin");
             if (!owned)
                 continue;
-
             ItemStack icon = new ItemStack(cosmetic.getIcon());
             ItemMeta meta = icon.getItemMeta();
             meta.displayName(MiniMessage.miniMessage().deserialize(cosmetic.getName()));
@@ -465,6 +510,191 @@ public class GuiManager implements Listener {
         }
 
         player.openInventory(inv);
+    }
+
+    private void openJavaEquipItemsForSubgroup(Player player, String categoryId, String subgroup) {
+        CosmeticCategory category = plugin.getCosmeticManager().getCategories().get(categoryId);
+        if (category == null)
+            return;
+
+        Inventory inv = Bukkit.createInventory(null, 54,
+                Component.text("Equip: ").append(MiniMessage.miniMessage().deserialize(category.getName()))
+                        .append(Component.text(" • " + subgroup, NamedTextColor.GRAY)));
+
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null)
+            return;
+
+        // Back button
+        ItemStack back = new ItemStack(Material.ARROW);
+        ItemMeta backMeta = back.getItemMeta();
+        backMeta.displayName(Component.text("← Back to Types", NamedTextColor.YELLOW));
+        backMeta.getPersistentDataContainer().set(categoryKey, PersistentDataType.STRING, categoryId);
+        backMeta.getPersistentDataContainer().set(actionKey, PersistentDataType.STRING, "back_to_equip_subgroups");
+        back.setItemMeta(backMeta);
+        inv.setItem(0, back);
+
+        // Unequip button
+        ItemStack unequip = new ItemStack(Material.BARRIER);
+        ItemMeta unequipMeta = unequip.getItemMeta();
+        unequipMeta.displayName(Component.text("Unequip All", NamedTextColor.RED));
+        unequipMeta.getPersistentDataContainer().set(categoryKey, PersistentDataType.STRING, categoryId);
+        unequipMeta.getPersistentDataContainer().set(actionKey, PersistentDataType.STRING, "unequip_category");
+        unequip.setItemMeta(unequipMeta);
+        inv.setItem(8, unequip);
+
+        var groups = subgroupMapForCategory(player, categoryId);
+        var items = groups.getOrDefault(subgroup, java.util.List.of());
+
+        int slot = 9;
+        for (Cosmetic cosmetic : items) {
+            boolean owned = data.ownedCosmetics.contains(cosmetic.getId()) || player.hasPermission("frost.admin");
+            if (!owned)
+                continue;
+
+            ItemStack icon = new ItemStack(cosmetic.getIcon());
+            ItemMeta meta = icon.getItemMeta();
+            meta.displayName(MiniMessage.miniMessage().deserialize(cosmetic.getName()));
+
+            List<Component> lore = new ArrayList<>();
+            for (String line : cosmetic.getDescription()) {
+                lore.add(MiniMessage.miniMessage().deserialize(line));
+            }
+
+            String equipKey;
+            if (categoryId.equals("particle-effects")) {
+                ParticleEffect pe = plugin.getParticleManager().getParticleEffect(cosmetic.getId());
+                String eventKey = pe != null ? pe.getTriggerEvent().name() : "";
+                equipKey = categoryId + ":" + eventKey;
+            } else if (categoryId.equals("armor-cosmetics")) {
+                String type = cosmetic.getAppliesType();
+                if ("armor-set".equalsIgnoreCase(type)) {
+                    equipKey = categoryId + ":SET";
+                } else {
+                    String slotName = cosmetic.getAppliesArmorSlot();
+                    equipKey = categoryId + ":" + (slotName != null ? slotName.toUpperCase() : "PIECE");
+                }
+            } else {
+                equipKey = categoryId + ":" + (cosmetic.getAppliesSlot() != null ? cosmetic.getAppliesSlot() : "");
+            }
+            boolean isEquipped = cosmetic.getId().equals(data.equippedCosmetics.get(equipKey));
+
+            lore.add(Component.text(""));
+            if (isEquipped) {
+                lore.add(Component.text("✓ EQUIPPED", NamedTextColor.GREEN));
+                meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+                meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            } else {
+                lore.add(Component.text("Click to Equip", NamedTextColor.YELLOW));
+            }
+            meta.lore(lore);
+
+            meta.getPersistentDataContainer().set(cosmeticKey, PersistentDataType.STRING, cosmetic.getId());
+            meta.getPersistentDataContainer().set(categoryKey, PersistentDataType.STRING, categoryId);
+            meta.getPersistentDataContainer().set(actionKey, PersistentDataType.STRING, "toggle_equip");
+            icon.setItemMeta(meta);
+
+            inv.setItem(slot++, icon);
+        }
+
+        player.openInventory(inv);
+    }
+
+    private void openBedrockEquipSubgroups(Player player, String categoryId) {
+        CosmeticCategory category = plugin.getCosmeticManager().getCategories().get(categoryId);
+        if (category == null)
+            return;
+
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null)
+            return;
+
+        SimpleForm.Builder form = SimpleForm.builder()
+                .title(category.getName())
+                .content("Choose a type");
+
+        form.button("← Back to Categories");
+
+        var allGroups = subgroupMapForCategory(player, categoryId);
+        java.util.List<String> subgroups = new java.util.ArrayList<>();
+        for (var e : allGroups.entrySet()) {
+            boolean hasOwned = e.getValue().stream()
+                    .anyMatch(c -> data.ownedCosmetics.contains(c.getId()) || player.hasPermission("frost.admin"));
+            if (hasOwned) {
+                subgroups.add(e.getKey());
+                form.button(e.getKey());
+            }
+        }
+
+        form.validResultHandler(response -> {
+            int index = response.clickedButtonId();
+            if (index == 0) {
+                openBedrockEquipCategories(player);
+            } else if (index > 0 && index <= subgroups.size()) {
+                openBedrockEquipItemsForSubgroup(player, categoryId, subgroups.get(index - 1));
+            }
+        });
+
+        FloodgateApi.getInstance().sendForm(player.getUniqueId(), form.build());
+    }
+
+    private void openBedrockEquipItemsForSubgroup(Player player, String categoryId, String subgroup) {
+        CosmeticCategory category = plugin.getCosmeticManager().getCategories().get(categoryId);
+        if (category == null)
+            return;
+
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null)
+            return;
+
+        var groups = subgroupMapForCategory(player, categoryId);
+        List<Cosmetic> items = groups.getOrDefault(subgroup, java.util.List.of()).stream()
+                .filter(c -> data.ownedCosmetics.contains(c.getId()) || player.hasPermission("frost.admin"))
+                .toList();
+
+        SimpleForm.Builder form = SimpleForm.builder()
+                .title(category.getName() + " • " + subgroup)
+                .content("Choose a cosmetic");
+
+        form.button("← Back to Types");
+        form.button("Unequip All");
+
+        for (Cosmetic cosmetic : items) {
+            String equipKey;
+            if (categoryId.equals("particle-effects")) {
+                ParticleEffect pe = plugin.getParticleManager().getParticleEffect(cosmetic.getId());
+                String eventKey = pe != null ? pe.getTriggerEvent().name() : "";
+                equipKey = categoryId + ":" + eventKey;
+            } else if (categoryId.equals("armor-cosmetics")) {
+                String type = cosmetic.getAppliesType();
+                if ("armor-set".equalsIgnoreCase(type)) {
+                    equipKey = categoryId + ":SET";
+                } else {
+                    String slotName = cosmetic.getAppliesArmorSlot();
+                    equipKey = categoryId + ":" + (slotName != null ? slotName.toUpperCase() : "PIECE");
+                }
+            } else {
+                equipKey = categoryId + ":" + (cosmetic.getAppliesSlot() != null ? cosmetic.getAppliesSlot() : "");
+            }
+            boolean isEquipped = cosmetic.getId().equals(data.equippedCosmetics.get(equipKey));
+            String status = isEquipped ? " ✓ EQUIPPED" : "";
+            form.button(cosmetic.getName() + status);
+        }
+
+        form.validResultHandler(response -> {
+            int index = response.clickedButtonId();
+            if (index == 0) {
+                openBedrockEquipSubgroups(player, categoryId);
+            } else if (index == 1) {
+                unequipCategory(player, categoryId);
+                openBedrockEquipItemsForSubgroup(player, categoryId, subgroup);
+            } else if (index > 1 && index - 2 < items.size()) {
+                toggleEquipCosmetic(player, items.get(index - 2));
+                openBedrockEquipItemsForSubgroup(player, categoryId, subgroup);
+            }
+        });
+
+        FloodgateApi.getInstance().sendForm(player.getUniqueId(), form.build());
     }
 
     private void openBedrockEquipCategoryItems(Player player, String categoryId) {
@@ -689,10 +919,19 @@ public class GuiManager implements Listener {
                 break;
             case "equip_category":
                 String equipCatId = meta.getPersistentDataContainer().get(categoryKey, PersistentDataType.STRING);
-                openJavaEquipCategoryItems(player, equipCatId);
+                openJavaEquipSubgroups(player, equipCatId);
                 break;
             case "back_to_equip_categories":
                 openJavaEquipCategories(player);
+                break;
+            case "equip_browse_subgroup":
+                String equipCat = meta.getPersistentDataContainer().get(categoryKey, PersistentDataType.STRING);
+                String equipSub = meta.getPersistentDataContainer().get(subgroupKey, PersistentDataType.STRING);
+                openJavaEquipItemsForSubgroup(player, equipCat, equipSub);
+                break;
+            case "back_to_equip_subgroups":
+                String backEquipCat = meta.getPersistentDataContainer().get(categoryKey, PersistentDataType.STRING);
+                openJavaEquipSubgroups(player, backEquipCat);
                 break;
             case "toggle_equip":
                 String toggleCosmeticId = meta.getPersistentDataContainer().get(cosmeticKey, PersistentDataType.STRING);
@@ -700,20 +939,35 @@ public class GuiManager implements Listener {
                 if (toggleCosmetic != null) {
                     toggleEquipCosmetic(player, toggleCosmetic);
                     String toggleCatId = meta.getPersistentDataContainer().get(categoryKey, PersistentDataType.STRING);
-                    openJavaEquipCategoryItems(player, toggleCatId);
+                    openJavaEquipSubgroups(player, toggleCatId);
                 }
                 break;
             case "unequip_category":
                 String unequipCatId = meta.getPersistentDataContainer().get(categoryKey, PersistentDataType.STRING);
                 unequipCategory(player, unequipCatId);
-                openJavaEquipCategoryItems(player, unequipCatId);
+                openJavaEquipSubgroups(player, unequipCatId);
                 break;
         }
+
     }
 
     private String capitalize(String s) {
         if (s == null || s.isEmpty())
             return s;
         return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
+    }
+
+    private String prettifyMaterial(String materialName) {
+        String[] parts = materialName.toLowerCase().split("_");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            if (parts[i].isEmpty())
+                continue;
+            sb.append(Character.toUpperCase(parts[i].charAt(0)))
+                    .append(parts[i].substring(1));
+            if (i < parts.length - 1)
+                sb.append(" ");
+        }
+        return sb.toString();
     }
 }
