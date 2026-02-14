@@ -1,8 +1,8 @@
 package com.stufy.fragmc.frost.listeners;
 
 import com.stufy.fragmc.frost.Frost;
-import com.stufy.fragmc.frost.managers.ConfigManager;
 import com.stufy.fragmc.frost.managers.PlayerDataManager;
+import com.stufy.fragmc.frost.models.Profile;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,30 +26,30 @@ public class HotbarLockListener implements Listener {
         this.plugin = plugin;
         this.lockedKey = new NamespacedKey(plugin, "frost_locked");
 
-        // Periodic check to ensure items are present
+        // INSTANT periodic check - no delays
+        boolean instantReplace = plugin.getConfig().getBoolean("settings.instant-item-replace", true);
+        long checkInterval = instantReplace ? 40L : 80L; // 2s or 4s
+
         plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
             for (Player player : plugin.getServer().getOnlinePlayers()) {
                 if (isLocked(player)) {
-                    giveHotbarItems(player);
+                    giveHotbarItems(player); // INSTANT - no delay
                 }
             }
-        }, 20L, 40L); // Check every 2 seconds
+        }, 20L, checkInterval);
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         plugin.getPlayerDataManager().loadPlayerData(event.getPlayer());
-        // Delay slightly to ensure data is loaded and inventory is ready
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            giveHotbarItems(event.getPlayer());
-        }, 5L);
+        // INSTANT - removed delay
+        giveHotbarItems(event.getPlayer());
     }
 
     @EventHandler
     public void onRespawn(PlayerRespawnEvent event) {
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            giveHotbarItems(event.getPlayer());
-        }, 5L);
+        // INSTANT - removed delay
+        giveHotbarItems(event.getPlayer());
     }
 
     @EventHandler
@@ -61,24 +61,29 @@ public class HotbarLockListener implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player))
-            return;
+        if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
 
-        if (!isLocked(player))
-            return;
+        if (!isLocked(player)) return;
 
-        // Prevent clicking on locked slots in player inventory
+        // Get current profile
+        PlayerDataManager.PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null) return;
+
+        Profile profile = plugin.getProfileManager().getProfile(data.currentProfile);
+        if (profile == null) return;
+
+        // Prevent clicking on locked slots
         if (event.getClickedInventory() != null && event.getClickedInventory().getType() == InventoryType.PLAYER) {
             int slot = event.getSlot();
-            if (plugin.getConfigManager().getHotbarItems().containsKey(slot)) {
+            if (profile.getHotbarItems().containsKey(slot)) {
                 event.setCancelled(true);
             }
         }
 
         // Prevent hotbar swapping into locked slots
         if (event.getHotbarButton() != -1) {
-            if (plugin.getConfigManager().getHotbarItems().containsKey(event.getHotbarButton())) {
+            if (profile.getHotbarItems().containsKey(event.getHotbarButton())) {
                 event.setCancelled(true);
             }
         }
@@ -86,12 +91,16 @@ public class HotbarLockListener implements Listener {
 
     @EventHandler
     public void onSwap(PlayerSwapHandItemsEvent event) {
-        if (!isLocked(event.getPlayer()))
-            return;
+        if (!isLocked(event.getPlayer())) return;
 
-        // Prevent swapping if main hand is locked slot
+        PlayerDataManager.PlayerData data = plugin.getPlayerDataManager().getPlayerData(event.getPlayer());
+        if (data == null) return;
+
+        Profile profile = plugin.getProfileManager().getProfile(data.currentProfile);
+        if (profile == null) return;
+
         int slot = event.getPlayer().getInventory().getHeldItemSlot();
-        if (plugin.getConfigManager().getHotbarItems().containsKey(slot)) {
+        if (profile.getHotbarItems().containsKey(slot)) {
             event.setCancelled(true);
         }
     }
@@ -99,10 +108,16 @@ public class HotbarLockListener implements Listener {
     public void giveHotbarItems(Player player) {
         PlayerInventory inv = player.getInventory();
         PlayerDataManager.PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
-        if (data == null)
-            return;
+        if (data == null) return;
 
-        plugin.getConfigManager().getHotbarItems().forEach((slot, item) -> {
+        // Get profile
+        Profile profile = plugin.getProfileManager().getProfile(data.currentProfile);
+        if (profile == null) {
+            plugin.getLogger().warning("Profile not found: " + data.currentProfile);
+            return;
+        }
+
+        profile.getHotbarItems().forEach((slot, item) -> {
             ItemStack toGive = item.clone();
 
             // Mark as locked
@@ -110,22 +125,24 @@ public class HotbarLockListener implements Listener {
             if (meta != null) {
                 meta.getPersistentDataContainer().set(lockedKey, PersistentDataType.BYTE, (byte) 1);
 
-                // Re-apply modifier if selected (to ensure it stays updated)
-                if (data.selectedModifiers.containsKey(slot)) {
-                    String modifierId = data.selectedModifiers.get(slot);
-                    ConfigManager.Modifier modifier = plugin.getConfigManager().getModifierRegistry().get(modifierId);
-                    if (modifier != null) {
-                        toGive = plugin.getModifierManager().applyModifier(toGive, modifier);
-                        meta = toGive.getItemMeta(); // Refresh meta
-                        meta.getPersistentDataContainer().set(lockedKey, PersistentDataType.BYTE, (byte) 1); // Re-tag
+                // Apply equipped cosmetic if any
+                String cosmeticKey = "weapon-skins:" + slot;
+                if (data.equippedCosmetics.containsKey(cosmeticKey)) {
+                    String cosmeticId = data.equippedCosmetics.get(cosmeticKey);
+                    var cosmetic = plugin.getCosmeticManager().getCosmetic(cosmeticId);
+                    if (cosmetic != null) {
+                        toGive = plugin.getCosmeticManager().applyCosmetic(toGive, cosmetic);
+                        meta = toGive.getItemMeta();
+                        if (meta != null) {
+                            meta.getPersistentDataContainer().set(lockedKey, PersistentDataType.BYTE, (byte) 1);
+                        }
                     }
                 }
 
                 toGive.setItemMeta(meta);
             }
 
-            // Only set if different to avoid visual glitching?
-            // For now, force set to ensure it's there.
+            // Only set if different
             ItemStack current = inv.getItem(slot);
             if (current == null || !current.isSimilar(toGive)) {
                 inv.setItem(slot, toGive);
@@ -134,8 +151,7 @@ public class HotbarLockListener implements Listener {
     }
 
     private boolean isLockedItem(ItemStack item) {
-        if (item == null || !item.hasItemMeta())
-            return false;
+        if (item == null || !item.hasItemMeta()) return false;
         return item.getItemMeta().getPersistentDataContainer().has(lockedKey, PersistentDataType.BYTE);
     }
 

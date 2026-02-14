@@ -37,13 +37,13 @@ public class DatabaseManager {
     }
 
     private void initDatabase() {
-        // Table to store player data: unlocked modifiers and selected modifiers for
-        // each item type
+        // Updated table structure with profiles and cosmetics
         String sql = "CREATE TABLE IF NOT EXISTS player_data (" +
                 "uuid VARCHAR(36) PRIMARY KEY, " +
                 "hotbar_locked BOOLEAN DEFAULT 1, " +
-                "unlocked_modifiers TEXT, " + // JSON string or comma separated list
-                "selected_modifiers TEXT" + // JSON string: {"hotbar_slot_index": "modifier_id"}
+                "current_profile VARCHAR(50) DEFAULT 'warrior', " +
+                "owned_cosmetics TEXT, " + // JSON: ["cosmetic1", "cosmetic2"]
+                "equipped_cosmetics TEXT" + // JSON: {"weapon-skins:0": "golden-spear"}
                 ");";
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(sql);

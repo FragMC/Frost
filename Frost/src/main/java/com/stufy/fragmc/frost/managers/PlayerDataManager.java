@@ -23,8 +23,8 @@ public class PlayerDataManager {
 
     public void loadPlayerData(Player player) {
         UUID uuid = player.getUniqueId();
-        // Default data
         PlayerData data = new PlayerData();
+        data.currentProfile = plugin.getProfileManager().getDefaultProfile();
 
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
             if (conn != null) {
@@ -34,19 +34,18 @@ public class PlayerDataManager {
 
                 if (rs.next()) {
                     data.hotbarLocked = rs.getBoolean("hotbar_locked");
-                    String unlockedJson = rs.getString("unlocked_modifiers");
-                    String selectedJson = rs.getString("selected_modifiers");
+                    data.currentProfile = rs.getString("current_profile");
 
-                    if (unlockedJson != null) {
-                        data.unlockedModifiers = gson.fromJson(unlockedJson, new TypeToken<Set<String>>() {
-                        }.getType());
+                    String ownedCosmeticsJson = rs.getString("owned_cosmetics");
+                    String equippedCosmeticsJson = rs.getString("equipped_cosmetics");
+
+                    if (ownedCosmeticsJson != null) {
+                        data.ownedCosmetics = gson.fromJson(ownedCosmeticsJson, new TypeToken<Set<String>>() {}.getType());
                     }
-                    if (selectedJson != null) {
-                        data.selectedModifiers = gson.fromJson(selectedJson, new TypeToken<Map<Integer, String>>() {
-                        }.getType());
+                    if (equippedCosmeticsJson != null) {
+                        data.equippedCosmetics = gson.fromJson(equippedCosmeticsJson, new TypeToken<Map<String, String>>() {}.getType());
                     }
                 } else {
-                    // Create entry if not exists
                     savePlayerData(player, data);
                 }
             }
@@ -62,18 +61,18 @@ public class PlayerDataManager {
     }
 
     public void savePlayerData(Player player, PlayerData data) {
-        if (data == null)
-            return;
+        if (data == null) return;
         UUID uuid = player.getUniqueId();
 
         try (Connection conn = plugin.getDatabaseManager().getConnection()) {
             if (conn != null) {
-                String sql = "INSERT OR REPLACE INTO player_data (uuid, hotbar_locked, unlocked_modifiers, selected_modifiers) VALUES (?, ?, ?, ?)";
+                String sql = "INSERT OR REPLACE INTO player_data (uuid, hotbar_locked, current_profile, owned_cosmetics, equipped_cosmetics) VALUES (?, ?, ?, ?, ?)";
                 PreparedStatement stmt = conn.prepareStatement(sql);
                 stmt.setString(1, uuid.toString());
                 stmt.setBoolean(2, data.hotbarLocked);
-                stmt.setString(3, gson.toJson(data.unlockedModifiers));
-                stmt.setString(4, gson.toJson(data.selectedModifiers));
+                stmt.setString(3, data.currentProfile);
+                stmt.setString(4, gson.toJson(data.ownedCosmetics));
+                stmt.setString(5, gson.toJson(data.equippedCosmetics));
                 stmt.executeUpdate();
             }
         } catch (SQLException e) {
@@ -101,7 +100,8 @@ public class PlayerDataManager {
 
     public static class PlayerData {
         public boolean hotbarLocked = true;
-        public Set<String> unlockedModifiers = new HashSet<>();
-        public Map<Integer, String> selectedModifiers = new HashMap<>(); // Slot -> ModifierID
+        public String currentProfile = "warrior";
+        public Set<String> ownedCosmetics = new HashSet<>();
+        public Map<String, String> equippedCosmetics = new HashMap<>();
     }
 }

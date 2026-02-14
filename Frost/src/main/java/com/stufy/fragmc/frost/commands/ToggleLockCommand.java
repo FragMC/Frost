@@ -23,16 +23,17 @@ public class ToggleLockCommand implements CommandExecutor {
             sender.sendMessage(Component.text("Only players can use this command.", NamedTextColor.RED));
             return true;
         }
-        
+
         Player player = (Player) sender;
         PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
         if (data == null) {
             plugin.getLogger().warning("Player data is null for " + player.getName());
             return true;
         }
+
         data.hotbarLocked = !data.hotbarLocked;
         plugin.getPlayerDataManager().savePlayerData(player);
-        
+
         if (data.hotbarLocked) {
             player.sendMessage(Component.text("Hotbar Lock ENABLED", NamedTextColor.GREEN));
             plugin.getHotbarLockListener().giveHotbarItems(player);

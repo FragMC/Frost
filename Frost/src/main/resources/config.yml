@@ -1,44 +1,348 @@
+# ===================================
 # Frost Plugin Configuration
+# ===================================
 
-# Hotbar Items Configuration
-# Slots: 0-8
-hotbar-items:
-  0:
-    material: DIAMOND_SWORD
-    custom_name: "<aqua>Spear"
-    lore:
-      - "<aqua>Your spear for your journey"
-      - "<aqua>across the landscape on FragMC"
-    enchantments:
-      sharpness: 5
-      unbreaking: 3
-    flags:
-      - HIDE_ENCHANTS
-      - HIDE_ATTRIBUTES
-    custom_model_data: 1001
-    modifiers:
-      gold_skin:
-        name: "<gold>Gold Skin"
+# Plugin Settings
+settings:
+  instant-item-replace: true  # Items replace instantly when used/dropped (no delay)
+  default-profile: "warrior"  # Default profile for new players
+
+# ===================================
+# PROFILES
+# ===================================
+# Profiles define different hotbar layouts
+# Players can only change profiles via:
+#   - Admin command: /frost setprofile <player> <profile>
+#   - Other plugins using the Frost API
+
+profiles:
+  warrior:
+    display-name: "<red><bold>Warrior Profile</bold></red>"
+    description: "Melee combat focused loadout"
+    hotbar-items:
+      0:
+        material: DIAMOND_SWORD
+        custom-name: "<aqua>Spear"
+        lore:
+          - "<aqua>Your spear for your journey"
+          - "<aqua>across the landscape on FragMC"
+        enchantments:
+          sharpness: 5
+          unbreaking: 3
+        flags:
+          - HIDE_ENCHANTS
+          - HIDE_ATTRIBUTES
+        custom-model-data: 1001
+      1:
+        material: BOW
+        custom-name: "<gold>Longbow"
+        lore:
+          - "<gray>A reliable ranged weapon"
+        enchantments:
+          power: 4
+          infinity: 1
+        custom-model-data: 1002
+      2:
+        material: SHIELD
+        custom-name: "<blue>Guardian Shield"
+        custom-model-data: 1003
+      8:
+        material: COOKED_BEEF
+        custom-name: "<yellow>Rations"
+
+  archer:
+    display-name: "<green><bold>Archer Profile</bold></green>"
+    description: "Ranged combat specialist"
+    hotbar-items:
+      0:
+        material: BOW
+        custom-name: "<green>Hunter's Bow"
+        enchantments:
+          power: 5
+          flame: 1
+        custom-model-data: 2001
+      1:
+        material: ARROW
+        custom-name: "<white>Arrows"
+      2:
+        material: IRON_SWORD
+        custom-name: "<gray>Backup Blade"
+        enchantments:
+          sharpness: 3
+      8:
+        material: GOLDEN_APPLE
+        custom-name: "<gold>Emergency Apple"
+
+  mage:
+    display-name: "<light_purple><bold>Mage Profile</bold></light_purple>"
+    description: "Magic-oriented loadout"
+    hotbar-items:
+      0:
+        material: BLAZE_ROD
+        custom-name: "<light_purple>Arcane Staff"
+        enchantments:
+          knockback: 2
+        custom-model-data: 3001
+      1:
+        material: BOOK
+        custom-name: "<aqua>Spell Tome"
+        custom-model-data: 3002
+
+# ===================================
+# COSMETICS SYSTEM
+# ===================================
+
+cosmetics:
+  # Weapon Skins Category
+  weapon-skins:
+    category-name: "<red>Weapon Skins"
+    category-icon: DIAMOND_SWORD
+    category-description: "Change the appearance of your weapons"
+
+    items:
+      golden-spear:
+        name: "<gold><bold>Golden Spear</bold>"
+        description:
+          - "<gold>A luxurious golden finish"
+          - "<gray>Applies to: Spear (Slot 0)"
         price: 1000.0
-        properties:
-          custom_model_data: 2001
+        icon: GOLD_INGOT
+        applies-to:
+          profile: "warrior"
+          slot: 0
+        modifications:
+          custom-model-data: 2001
           lore:
             - "<gold>Shiny and golden!"
-      fire_aspect_mod:
-        name: "<red>Fire Aspect"
-        price: 5000.0
-        properties:
+            - "<gray>A mark of wealth and power"
+
+      obsidian-spear:
+        name: "<dark_gray><bold>Obsidian Spear</bold>"
+        description:
+          - "<dark_gray>Forged from volcanic glass"
+          - "<gray>Applies to: Spear (Slot 0)"
+        price: 2500.0
+        icon: OBSIDIAN
+        applies-to:
+          profile: "warrior"
+          slot: 0
+        modifications:
+          custom-model-data: 2002
           enchantments:
-            fire_aspect: 2
-  1:
-    material: BOW
-    custom_name: "<gold>Longbow"
-    enchantments:
-      power: 4
-    custom_model_data: 1002
-    modifiers:
-      epic_name:
-        name: "<light_purple>Epic Name Tag"
-        price: 500.0
-        properties:
-          custom_name: "<rainbow>Legendary Weapon</rainbow>"
+            fire-aspect: 1
+          lore:
+            - "<red>Burns with volcanic fury"
+
+      crystal-spear:
+        name: "<aqua><bold>Crystal Spear</bold>"
+        description:
+          - "<aqua>Ethereal and beautiful"
+          - "<gray>Applies to: Spear (Slot 0)"
+        price: 5000.0
+        icon: DIAMOND
+        applies-to:
+          profile: "warrior"
+          slot: 0
+        modifications:
+          custom-model-data: 2003
+          lore:
+            - "<aqua>Shimmers with magical energy"
+            - "<light_purple>+15% Damage vs. Undead"
+
+      flame-bow:
+        name: "<red><bold>Flame Bow</bold>"
+        description:
+          - "<red>Arrows ignite on fire"
+          - "<gray>Applies to: Longbow (Slot 1)"
+        price: 1500.0
+        icon: FIRE_CHARGE
+        applies-to:
+          profile: "warrior"
+          slot: 1
+        modifications:
+          custom-model-data: 2101
+          enchantments:
+            flame: 1
+          lore:
+            - "<red>Sets your enemies ablaze"
+
+  # Armor Cosmetics Category
+  armor-cosmetics:
+    category-name: "<blue>Armor Sets"
+    category-icon: DIAMOND_CHESTPLATE
+    category-description: "Customize your armor appearance"
+
+    items:
+      royal-set:
+        name: "<gold><bold>Royal Armor Set</bold>"
+        description:
+          - "<gold>Fit for a king"
+          - "<gray>Full set: Helmet, Chest, Legs, Boots"
+        price: 10000.0
+        icon: GOLDEN_CHESTPLATE
+        applies-to:
+          type: "armor-set"
+        modifications:
+          helmet:
+            custom-model-data: 5001
+            lore:
+              - "<gold>Crown of the Realm"
+          chestplate:
+            custom-model-data: 5002
+            lore:
+              - "<gold>Royal Breastplate"
+          leggings:
+            custom-model-data: 5003
+            lore:
+              - "<gold>Royal Leggings"
+          boots:
+            custom-model-data: 5004
+            lore:
+              - "<gold>Royal Boots"
+
+      shadow-set:
+        name: "<dark_gray><bold>Shadow Armor Set</bold>"
+        description:
+          - "<dark_gray>Blend into the darkness"
+          - "<gray>Full set: Helmet, Chest, Legs, Boots"
+        price: 8000.0
+        icon: NETHERITE_CHESTPLATE
+        applies-to:
+          type: "armor-set"
+        modifications:
+          helmet:
+            custom-model-data: 5101
+            lore:
+              - "<dark_gray>Hood of Shadows"
+          chestplate:
+            custom-model-data: 5102
+            lore:
+              - "<dark_gray>Shadow Cloak"
+          leggings:
+            custom-model-data: 5103
+            lore:
+              - "<dark_gray>Shadow Pants"
+          boots:
+            custom-model-data: 5104
+            lore:
+              - "<dark_gray>Shadow Boots"
+
+      royal-helmet:
+        name: "<gold><bold>Royal Helmet</bold>"
+        description:
+          - "<gold>Crown of nobility"
+          - "<gray>Individual piece"
+        price: 3000.0
+        icon: GOLDEN_HELMET
+        applies-to:
+          type: "armor-piece"
+          slot: "helmet"
+        modifications:
+          custom-model-data: 5001
+          lore:
+            - "<gold>A crown worthy of legends"
+
+  # Particle Effects Category
+  particle-effects:
+    category-name: "<light_purple>Particle Effects"
+    category-icon: DRAGON_BREATH
+    category-description: "Add visual effects to your character"
+
+    items:
+      flame-aura:
+        name: "<red><bold>Flame Aura</bold>"
+        description:
+          - "<red>Surrounded by flames"
+          - "<gray>Cosmetic particle effect"
+        price: 5000.0
+        icon: FIRE_CHARGE
+        applies-to:
+          type: "particle-effect"
+        modifications:
+          particle: FLAME
+          amount: 3
+
+      sparkle-trail:
+        name: "<yellow><bold>Sparkle Trail</bold>"
+        description:
+          - "<yellow>Leave a trail of sparkles"
+          - "<gray>Cosmetic particle effect"
+        price: 4000.0
+        icon: GLOWSTONE_DUST
+        applies-to:
+          type: "particle-effect"
+        modifications:
+          particle: VILLAGER_HAPPY
+          amount: 5
+
+  # Emote Category
+  emotes:
+    category-name: "<aqua>Emotes"
+    category-icon: MUSIC_DISC_CAT
+    category-description: "Express yourself with emotes"
+
+    items:
+      dance:
+        name: "<light_purple><bold>Dance Emote</bold>"
+        description:
+          - "<light_purple>Bust a move!"
+          - "<gray>Keybind: /emote dance"
+        price: 2000.0
+        icon: NOTE_BLOCK
+        applies-to:
+          type: "emote"
+        modifications:
+          emote-id: "dance"
+
+      wave:
+        name: "<aqua><bold>Wave Emote</bold>"
+        description:
+          - "<aqua>Wave to your friends"
+          - "<gray>Keybind: /emote wave"
+        price: 1000.0
+        icon: FEATHER
+        applies-to:
+          type: "emote"
+        modifications:
+          emote-id: "wave"
+
+# ===================================
+# SHOP SETTINGS
+# ===================================
+
+shop:
+  title: "<gradient:aqua:blue>Cosmetics Shop</gradient>"
+  rows: 6  # Chest GUI rows (1-6)
+
+  # Layout for shop GUI (slot numbers 0-53 for 6-row chest)
+  layout:
+    categories:
+      weapon-skins: 10
+      armor-cosmetics: 12
+      particle-effects: 14
+      emotes: 16
+
+    decorations:
+      20:
+        material: GRAY_STAINED_GLASS_PANE
+        custom-name: " "
+      21:
+        material: GRAY_STAINED_GLASS_PANE
+        custom-name: " "
+      22:
+        material: GRAY_STAINED_GLASS_PANE
+        custom-name: " "
+      23:
+        material: GRAY_STAINED_GLASS_PANE
+        custom-name: " "
+      24:
+        material: GRAY_STAINED_GLASS_PANE
+        custom-name: " "
+
+# ===================================
+# PERMISSIONS
+# ===================================
+# frost.admin - Access to admin commands
+# frost.shop - Access to cosmetics shop
+# frost.equip - Access to equipment menu
+# frost.profile.<profile-name> - Access to specific profile

@@ -6,14 +6,14 @@ depend:
   - Vault
 softdepend:
   - Geyser-Spigot
-  - Floodgate
+  - floodgate
 commands:
   frost:
     description: Admin Frost command
-    usage: /frost <reload>
+    usage: /frost <reload|setprofile|listprofiles|givecosmetic>
     permission: frost.admin
   shop:
-    description: Open the modifier shop
+    description: Open the cosmetics shop
     usage: /shop
   equip:
     description: Open the equipment menu
@@ -21,3 +21,14 @@ commands:
   togglelock:
     description: Toggle hotbar lock
     usage: /togglelock
+
+permissions:
+  frost.admin:
+    description: Access to admin commands
+    default: op
+  frost.shop:
+    description: Access to cosmetics shop
+    default: true
+  frost.equip:
+    description: Access to equipment menu
+    default: true
