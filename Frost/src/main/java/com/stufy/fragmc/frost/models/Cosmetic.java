@@ -16,6 +16,7 @@ public class Cosmetic {
     private final Integer appliesSlot;
     private final String appliesArmorSlot;
     private final ConfigurationSection modifications;
+    private final boolean adminOnly;
 
     public Cosmetic(String id, String categoryId, ConfigurationSection section) {
         this.id = id;
@@ -42,6 +43,7 @@ public class Cosmetic {
         }
 
         this.modifications = section.getConfigurationSection("modifications");
+        this.adminOnly = section.getBoolean("admin-only", false);
     }
 
     public String getId() { return id; }
@@ -55,4 +57,5 @@ public class Cosmetic {
     public Integer getAppliesSlot() { return appliesSlot; }
     public String getAppliesArmorSlot() { return appliesArmorSlot; }
     public ConfigurationSection getModifications() { return modifications; }
+    public boolean isAdminOnly() { return adminOnly; }
 }

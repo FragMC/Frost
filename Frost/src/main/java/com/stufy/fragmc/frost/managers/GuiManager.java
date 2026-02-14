@@ -3,6 +3,7 @@ package com.stufy.fragmc.frost.managers;
 import com.stufy.fragmc.frost.Frost;
 import com.stufy.fragmc.frost.models.Cosmetic;
 import com.stufy.fragmc.frost.models.CosmeticCategory;
+import com.stufy.fragmc.frost.models.ParticleEffect;
 import com.stufy.fragmc.frost.managers.PlayerDataManager.PlayerData;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -115,8 +116,39 @@ public class GuiManager implements Listener {
         back.setItemMeta(backMeta);
         inv.setItem(0, back);
 
-        int slot = 9;
+        // Grouping
+        java.util.Map<String, java.util.List<Cosmetic>> groups = new java.util.LinkedHashMap<>();
         for (Cosmetic cosmetic : category.getCosmetics()) {
+            if (cosmetic.isAdminOnly() && !player.hasPermission("frost.admin")) continue;
+            String group = "Other";
+            if (categoryId.equals("weapon-skins")) {
+                Integer s = cosmetic.getAppliesSlot();
+                group = s != null ? "Slot " + s : "Misc";
+            } else if (categoryId.equals("armor-cosmetics")) {
+                String type = cosmetic.getAppliesType();
+                if ("armor-set".equalsIgnoreCase(type)) group = "Sets";
+                else {
+                    String slotName = cosmetic.getAppliesArmorSlot();
+                    group = slotName != null ? capitalize(slotName) : "Pieces";
+                }
+            } else if (categoryId.equals("particle-effects")) {
+                ParticleEffect pe = plugin.getParticleManager().getParticleEffect(cosmetic.getId());
+                if (pe != null) group = capitalize(pe.getEffectType().name().toLowerCase());
+            }
+            groups.computeIfAbsent(group, k -> new java.util.ArrayList<>()).add(cosmetic);
+        }
+
+        int slot = 9;
+        for (var entry : groups.entrySet()) {
+            // Header item
+            ItemStack header = new ItemStack(Material.PAPER);
+            ItemMeta hMeta = header.getItemMeta();
+            hMeta.displayName(Component.text("— " + entry.getKey() + " —", NamedTextColor.AQUA));
+            hMeta.getPersistentDataContainer().set(actionKey, PersistentDataType.STRING, "noop");
+            header.setItemMeta(hMeta);
+            inv.setItem(slot++, header);
+
+            for (Cosmetic cosmetic : entry.getValue()) {
             ItemStack icon = new ItemStack(cosmetic.getIcon());
             ItemMeta meta = icon.getItemMeta();
             meta.displayName(MiniMessage.miniMessage().deserialize(cosmetic.getName()));
@@ -126,9 +158,14 @@ public class GuiManager implements Listener {
                 lore.add(MiniMessage.miniMessage().deserialize(line));
             }
             lore.add(Component.text(""));
-            lore.add(Component.text("Price: " + plugin.getEconomy().format(cosmetic.getPrice()), NamedTextColor.YELLOW));
+                if (cosmetic.isAdminOnly() && !player.hasPermission("frost.admin")) {
+                    lore.add(Component.text("ADMIN-ONLY", NamedTextColor.RED));
+                } else {
+                    lore.add(Component.text("Price: " + plugin.getEconomy().format(cosmetic.getPrice()), NamedTextColor.YELLOW));
+                }
 
-            if (data.ownedCosmetics.contains(cosmetic.getId())) {
+                boolean owned = data.ownedCosmetics.contains(cosmetic.getId()) || player.hasPermission("frost.admin");
+                if (owned) {
                 lore.add(Component.text(""));
                 lore.add(Component.text("✓ OWNED", NamedTextColor.GREEN));
             } else {
@@ -143,6 +180,7 @@ public class GuiManager implements Listener {
             icon.setItemMeta(meta);
 
             inv.setItem(slot++, icon);
+            }
         }
 
         player.openInventory(inv);
@@ -161,9 +199,41 @@ public class GuiManager implements Listener {
 
         form.button("← Back to Categories");
 
-        List<Cosmetic> cosmetics = category.getCosmetics();
-        for (Cosmetic cosmetic : cosmetics) {
-            String status = data.ownedCosmetics.contains(cosmetic.getId())
+        // Build grouped list
+        java.util.List<Object> entries = new java.util.ArrayList<>(); // String headers or Cosmetic items
+        java.util.Map<String, java.util.List<Cosmetic>> groups = new java.util.LinkedHashMap<>();
+        for (Cosmetic cosmetic : category.getCosmetics()) {
+            if (cosmetic.isAdminOnly() && !player.hasPermission("frost.admin")) continue;
+            String group = "Other";
+            if (categoryId.equals("weapon-skins")) {
+                Integer s = cosmetic.getAppliesSlot();
+                group = s != null ? "Slot " + s : "Misc";
+            } else if (categoryId.equals("armor-cosmetics")) {
+                String type = cosmetic.getAppliesType();
+                if ("armor-set".equalsIgnoreCase(type)) group = "Sets";
+                else {
+                    String slotName = cosmetic.getAppliesArmorSlot();
+                    group = slotName != null ? capitalize(slotName) : "Pieces";
+                }
+            } else if (categoryId.equals("particle-effects")) {
+                ParticleEffect pe = plugin.getParticleManager().getParticleEffect(cosmetic.getId());
+                if (pe != null) group = capitalize(pe.getEffectType().name().toLowerCase());
+            }
+            groups.computeIfAbsent(group, k -> new java.util.ArrayList<>()).add(cosmetic);
+        }
+        for (var e : groups.entrySet()) {
+            entries.add("== " + e.getKey() + " ==");
+            entries.addAll(e.getValue());
+        }
+
+        for (Object entry : entries) {
+            if (entry instanceof String headerText) {
+                form.button(headerText);
+                continue;
+            }
+            Cosmetic cosmetic = (Cosmetic) entry;
+            boolean owned = data.ownedCosmetics.contains(cosmetic.getId()) || player.hasPermission("frost.admin");
+            String status = owned
                     ? " ✓ OWNED"
                     : " - " + plugin.getEconomy().format(cosmetic.getPrice());
             form.button(cosmetic.getName() + status);
@@ -173,9 +243,14 @@ public class GuiManager implements Listener {
             int index = response.clickedButtonId();
             if (index == 0) {
                 openBedrockShopCategories(player);
-            } else if (index > 0 && index <= cosmetics.size()) {
-                buyCosmetic(player, cosmetics.get(index - 1));
-                openBedrockCategoryItems(player, categoryId); // Refresh
+            } else if (index > 0) {
+                Object chosen = entries.get(index - 1);
+                if (chosen instanceof String) {
+                    openBedrockCategoryItems(player, categoryId);
+                } else {
+                    buyCosmetic(player, (Cosmetic) chosen);
+                    openBedrockCategoryItems(player, categoryId); // Refresh
+                }
             }
         });
 
@@ -266,7 +341,8 @@ public class GuiManager implements Listener {
 
         int slot = 9;
         for (Cosmetic cosmetic : category.getCosmetics()) {
-            if (!data.ownedCosmetics.contains(cosmetic.getId())) continue;
+            boolean owned = data.ownedCosmetics.contains(cosmetic.getId()) || player.hasPermission("frost.admin");
+            if (!owned) continue;
 
             ItemStack icon = new ItemStack(cosmetic.getIcon());
             ItemMeta meta = icon.getItemMeta();
@@ -278,7 +354,14 @@ public class GuiManager implements Listener {
             }
 
             // Check if equipped
-            String equipKey = categoryId + ":" + (cosmetic.getAppliesSlot() != null ? cosmetic.getAppliesSlot() : "");
+            String equipKey;
+            if (categoryId.equals("particle-effects")) {
+                ParticleEffect pe = plugin.getParticleManager().getParticleEffect(cosmetic.getId());
+                String eventKey = pe != null ? pe.getTriggerEvent().name() : "";
+                equipKey = categoryId + ":" + eventKey;
+            } else {
+                equipKey = categoryId + ":" + (cosmetic.getAppliesSlot() != null ? cosmetic.getAppliesSlot() : "");
+            }
             boolean isEquipped = cosmetic.getId().equals(data.equippedCosmetics.get(equipKey));
 
             lore.add(Component.text(""));
@@ -310,7 +393,7 @@ public class GuiManager implements Listener {
         if (data == null) return;
 
         List<Cosmetic> ownedCosmetics = category.getCosmetics().stream()
-                .filter(c -> data.ownedCosmetics.contains(c.getId()))
+                .filter(c -> data.ownedCosmetics.contains(c.getId()) || player.hasPermission("frost.admin"))
                 .toList();
 
         SimpleForm.Builder form = SimpleForm.builder()
@@ -321,7 +404,14 @@ public class GuiManager implements Listener {
         form.button("Unequip All");
 
         for (Cosmetic cosmetic : ownedCosmetics) {
-            String equipKey = categoryId + ":" + (cosmetic.getAppliesSlot() != null ? cosmetic.getAppliesSlot() : "");
+            String equipKey;
+            if (categoryId.equals("particle-effects")) {
+                ParticleEffect pe = plugin.getParticleManager().getParticleEffect(cosmetic.getId());
+                String eventKey = pe != null ? pe.getTriggerEvent().name() : "";
+                equipKey = categoryId + ":" + eventKey;
+            } else {
+                equipKey = categoryId + ":" + (cosmetic.getAppliesSlot() != null ? cosmetic.getAppliesSlot() : "");
+            }
             boolean isEquipped = cosmetic.getId().equals(data.equippedCosmetics.get(equipKey));
 
             String status = isEquipped ? " ✓ EQUIPPED" : "";
@@ -354,6 +444,16 @@ public class GuiManager implements Listener {
             return;
         }
 
+        if (cosmetic.isAdminOnly() && !player.hasPermission("frost.admin")) {
+            player.sendMessage(Component.text("This cosmetic is admin-only.", NamedTextColor.RED));
+            return;
+        }
+
+        if (player.hasPermission("frost.admin")) {
+            player.sendMessage(Component.text("Admins already have access to all cosmetics.", NamedTextColor.YELLOW));
+            return;
+        }
+
         if (plugin.getEconomy().getBalance(player) >= cosmetic.getPrice()) {
             plugin.getEconomy().withdrawPlayer(player, cosmetic.getPrice());
             data.ownedCosmetics.add(cosmetic.getId());
@@ -369,8 +469,32 @@ public class GuiManager implements Listener {
         PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
         if (data == null) return;
 
-        String equipKey = cosmetic.getCategoryId() + ":" +
-                (cosmetic.getAppliesSlot() != null ? cosmetic.getAppliesSlot() : "");
+        String equipKey;
+        if (cosmetic.getCategoryId().equals("particle-effects")) {
+            ParticleEffect pe = plugin.getParticleManager().getParticleEffect(cosmetic.getId());
+            if (pe == null) return;
+            String eventName = pe.getTriggerEvent().name();
+            equipKey = cosmetic.getCategoryId() + ":" + eventName;
+
+            // Enforce rules:
+            // - If ALWAYS equipped, block others
+            if (!eventName.equals("ALWAYS") && data.equippedCosmetics.containsKey("particle-effects:ALWAYS")) {
+                player.sendMessage(Component.text("Disable your ALWAYS particle before equipping others.", NamedTextColor.RED));
+                return;
+            }
+            // - If equipping ALWAYS, must have no other particle-effects equipped
+            if (eventName.equals("ALWAYS")) {
+                boolean hasOthers = data.equippedCosmetics.keySet().stream()
+                        .anyMatch(k -> k.startsWith("particle-effects:") && !k.equals("particle-effects:ALWAYS"));
+                if (hasOthers) {
+                    player.sendMessage(Component.text("Unequip other particles before enabling an ALWAYS effect.", NamedTextColor.RED));
+                    return;
+                }
+            }
+        } else {
+            equipKey = cosmetic.getCategoryId() + ":" +
+                    (cosmetic.getAppliesSlot() != null ? cosmetic.getAppliesSlot() : "");
+        }
 
         boolean currentlyEquipped = cosmetic.getId().equals(data.equippedCosmetics.get(equipKey));
 
@@ -379,7 +503,12 @@ public class GuiManager implements Listener {
             player.sendMessage(Component.text("Unequipped ", NamedTextColor.YELLOW)
                     .append(MiniMessage.miniMessage().deserialize(cosmetic.getName())));
         } else {
-            data.equippedCosmetics.put(equipKey, cosmetic.getId());
+            // For particle-effects: ensure only one per event
+            if (cosmetic.getCategoryId().equals("particle-effects")) {
+                data.equippedCosmetics.put(equipKey, cosmetic.getId());
+            } else {
+                data.equippedCosmetics.put(equipKey, cosmetic.getId());
+            }
             player.sendMessage(Component.text("Equipped ", NamedTextColor.GREEN)
                     .append(MiniMessage.miniMessage().deserialize(cosmetic.getName())));
         }
@@ -455,5 +584,10 @@ public class GuiManager implements Listener {
                 openJavaEquipCategoryItems(player, unequipCatId);
                 break;
         }
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.substring(0,1).toUpperCase() + s.substring(1).toLowerCase();
     }
 }

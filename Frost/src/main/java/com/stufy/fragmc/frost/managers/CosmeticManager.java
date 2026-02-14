@@ -107,7 +107,7 @@ public class CosmeticManager {
                 if (enchants != null) {
                     for (String enchantName : enchants.getKeys(false)) {
                         Enchantment enchant = Enchantment.getByKey(
-                                NamespacedKey.minecraft(enchantName.toLowerCase().replace("_", "-"))
+                                NamespacedKey.minecraft(enchantName.toLowerCase().replace("_", "-").replace(" ", "-"))
                         );
                         if (enchant != null) {
                             meta.addEnchant(enchant, enchants.getInt(enchantName), true);

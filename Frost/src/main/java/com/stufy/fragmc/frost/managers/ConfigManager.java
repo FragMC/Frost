@@ -34,7 +34,8 @@ public class ConfigManager {
     public ItemStack createItemFromConfig(ConfigurationSection section) {
         String materialName = section.getString("material", "STONE");
         Material material = Material.matchMaterial(materialName);
-        if (material == null) material = Material.STONE;
+        if (material == null)
+            material = Material.STONE;
 
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
@@ -60,8 +61,7 @@ public class ConfigManager {
                 if (enchants != null) {
                     for (String enchantName : enchants.getKeys(false)) {
                         Enchantment enchant = Enchantment.getByKey(
-                                NamespacedKey.minecraft(enchantName.toLowerCase().replace("_", "-"))
-                        );
+                                NamespacedKey.minecraft(enchantName.toLowerCase().replace("_", "-").replace(" ", "-")));
                         if (enchant != null) {
                             meta.addEnchant(enchant, enchants.getInt(enchantName), true);
                         }

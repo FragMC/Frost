@@ -77,9 +77,10 @@ public class ParticleManager {
                 var data = plugin.getPlayerDataManager().getPlayerData(player);
                 if (data == null) continue;
 
-                String particleKey = data.equippedCosmetics.get("particle-effects:");
-                if (particleKey != null) {
-                    ParticleEffect effect = particleEffects.get(particleKey);
+                // Check for ALWAYS effect
+                String alwaysId = data.equippedCosmetics.get("particle-effects:ALWAYS");
+                if (alwaysId != null) {
+                    ParticleEffect effect = particleEffects.get(alwaysId);
                     if (effect != null && effect.getTriggerEvent() == ParticleEffect.TriggerEvent.ALWAYS) {
                         spawnParticles(player, effect);
                     }
@@ -95,10 +96,13 @@ public class ParticleManager {
         var data = plugin.getPlayerDataManager().getPlayerData(player);
         if (data == null) return;
 
-        String particleKey = data.equippedCosmetics.get("particle-effects:");
-        if (particleKey == null) return;
+        // If ALWAYS is equipped, suppress other triggers
+        if (data.equippedCosmetics.containsKey("particle-effects:ALWAYS")) return;
 
-        ParticleEffect effect = particleEffects.get(particleKey);
+        String id = data.equippedCosmetics.get("particle-effects:" + event.name());
+        if (id == null) return;
+
+        ParticleEffect effect = particleEffects.get(id);
         if (effect == null || effect.getTriggerEvent() != event) return;
 
         // For burst effects, spawn immediately

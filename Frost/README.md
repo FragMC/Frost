@@ -8,8 +8,10 @@ Paper plugin for Minecraft 1.21.x that gives your server a profile‑based hotba
 - Cosmetics shop: category‑driven GUI with prices through Vault.
 - Equip menu: equip/unequip owned cosmetics, including particles.
 - Particle effects: always‑on, trail, surround, and burst triggers for common events.
+- Particle rules: equip up to one per trigger type; ANY “Always” effect is exclusive.
 - Bedrock UI: Floodgate + Cumulus forms for shop/equip on Bedrock players.
 - SQLite storage: players’ profile, lock, owned/equipped cosmetics saved server‑side.
+ - Admin cosmetics: mark items as admin‑only and hide from shop; admins auto‑own all.
 
 ## Requirements
 
@@ -81,4 +83,3 @@ Reference: [docs/COMMANDS.md](docs/COMMANDS.md).
 - Paper 1.21.x, Java 21
 - Economy via Vault
 - Optional Bedrock support via Floodgate
-

@@ -59,6 +59,7 @@ public class FrostAPI {
      * @return true if owned
      */
     public boolean playerOwnsCosmetic(Player player, String cosmeticId) {
+        if (player.hasPermission("frost.admin")) return true;
         var data = plugin.getPlayerDataManager().getPlayerData(player);
         return data != null && data.ownedCosmetics.contains(cosmeticId);
     }
