@@ -246,7 +246,7 @@ public class GuiManager implements Listener {
             } else if (categoryId.equals("particle-effects")) {
                 ParticleEffect pe = plugin.getParticleManager().getParticleEffect(cosmetic.getId());
                 if (pe != null)
-                    group = capitalize(pe.getEffectType().name().toLowerCase());
+                    group = prettifyMaterial(pe.getTriggerEvent().name());
             }
             groups.computeIfAbsent(group, k -> new java.util.ArrayList<>()).add(cosmetic);
         }

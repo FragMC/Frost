@@ -158,10 +158,7 @@ public class CosmeticManager {
             return;
         }
         if (cosmetic.getAppliesType().equals("armor-set")) {
-            clearArmorPiece(player, "helmet");
-            clearArmorPiece(player, "chestplate");
-            clearArmorPiece(player, "leggings");
-            clearArmorPiece(player, "boots");
+            clearAllArmorSlots(player);
         } else {
             String slot = cosmetic.getAppliesArmorSlot();
             if (slot != null) {
@@ -226,6 +223,13 @@ public class CosmeticManager {
             case "leggings" -> player.getInventory().setLeggings(piece);
             case "boots" -> player.getInventory().setBoots(piece);
         }
+    }
+
+    public void clearAllArmorSlots(Player player) {
+        player.getInventory().setHelmet(new ItemStack(Material.AIR));
+        player.getInventory().setChestplate(new ItemStack(Material.AIR));
+        player.getInventory().setLeggings(new ItemStack(Material.AIR));
+        player.getInventory().setBoots(new ItemStack(Material.AIR));
     }
 
     private ItemStack defaultArmorForSlot(String slot) {

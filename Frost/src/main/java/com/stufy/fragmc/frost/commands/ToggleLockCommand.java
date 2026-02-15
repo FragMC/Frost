@@ -34,6 +34,15 @@ public class ToggleLockCommand implements CommandExecutor {
         data.hotbarLocked = !data.hotbarLocked;
         plugin.getPlayerDataManager().savePlayerData(player);
 
+        // Clear any equipped armor cosmetics and armor pieces on lock toggle
+        if (plugin.getCosmeticManager() != null) {
+            plugin.getCosmeticManager().clearAllArmorSlots(player);
+        }
+        if (data.equippedCosmetics != null) {
+            data.equippedCosmetics.keySet().removeIf(k -> k.startsWith("armor-cosmetics:"));
+            plugin.getPlayerDataManager().savePlayerData(player);
+        }
+
         if (data.hotbarLocked) {
             player.sendMessage(Component.text("Hotbar Lock ENABLED", NamedTextColor.GREEN));
             plugin.getHotbarLockListener().giveHotbarItems(player);

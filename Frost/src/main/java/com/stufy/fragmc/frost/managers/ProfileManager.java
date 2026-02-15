@@ -81,6 +81,14 @@ public class ProfileManager {
         var data = plugin.getPlayerDataManager().getPlayerData(player);
         if (data == null) return false;
 
+        // Clear any equipped armor cosmetics and armor pieces when switching profiles
+        if (plugin.getCosmeticManager() != null) {
+            plugin.getCosmeticManager().clearAllArmorSlots(player);
+        }
+        if (data.equippedCosmetics != null) {
+            data.equippedCosmetics.keySet().removeIf(k -> k.startsWith("armor-cosmetics:"));
+        }
+
         data.currentProfile = profileId;
         plugin.getPlayerDataManager().savePlayerData(player);
 
