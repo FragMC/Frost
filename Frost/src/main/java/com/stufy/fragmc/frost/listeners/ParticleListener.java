@@ -74,17 +74,17 @@ public class ParticleListener implements Listener {
         if (event.getDamager() instanceof Player player) {
             plugin.getParticleManager().triggerEffect(player, ParticleEffect.TriggerEvent.DAMAGE_DEALT);
 
-            // Check for mace smash (1.21+ feature detection)
             try {
-                // Check if player is falling with high velocity (mace smash detection)
                 if (player.getVelocity().getY() < -0.5 && player.getFallDistance() > 3) {
-                    // Try to detect mace item (1.21+)
                     if (player.getInventory().getItemInMainHand().getType().toString().equals("MACE")) {
                         plugin.getParticleManager().triggerEffect(player, ParticleEffect.TriggerEvent.MACE_SMASH);
                     }
                 }
             } catch (Exception e) {
-                // Silently ignore if MACE doesn't exist (pre-1.21)
+            }
+
+            if (player.getInventory().getItemInMainHand().getType().toString().equals("SPEAR")) {
+                plugin.getParticleManager().triggerEffect(player, ParticleEffect.TriggerEvent.SPEAR_CHANGE);
             }
         }
     }

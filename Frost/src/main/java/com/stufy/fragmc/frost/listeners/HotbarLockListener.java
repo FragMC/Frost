@@ -6,11 +6,13 @@ import com.stufy.fragmc.frost.models.Profile;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
@@ -39,17 +41,29 @@ public class HotbarLockListener implements Listener {
         }, 20L, checkInterval);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onJoin(PlayerJoinEvent event) {
+        // Load player data first
         plugin.getPlayerDataManager().loadPlayerData(event.getPlayer());
+
         // INSTANT - removed delay
-        giveHotbarItems(event.getPlayer());
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            giveHotbarItems(event.getPlayer());
+        }, 5L); // Small delay to ensure everything is loaded
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuit(PlayerQuitEvent event) {
+        // Save player data when they leave
+        plugin.getPlayerDataManager().unloadPlayerData(event.getPlayer());
     }
 
     @EventHandler
     public void onRespawn(PlayerRespawnEvent event) {
         // INSTANT - removed delay
-        giveHotbarItems(event.getPlayer());
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            giveHotbarItems(event.getPlayer());
+        }, 5L);
     }
 
     @EventHandler

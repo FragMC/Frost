@@ -26,7 +26,7 @@ public class FrostCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Component.text("Usage: /frost <reload|setprofile|listprofiles|givecosmetic>", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Usage: /frost <reload|setprofile|listprofiles|givecosmetic|custommodel>", NamedTextColor.RED));
             return true;
         }
 
@@ -96,6 +96,65 @@ public class FrostCommand implements CommandExecutor, TabCompleter {
                 }
                 break;
 
+            case "custommodel":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(Component.text("Only players can use this command.", NamedTextColor.RED));
+                    return true;
+                }
+                Player self = (Player) sender;
+                if (args.length < 2) {
+                    self.sendMessage(Component.text("Usage: /frost custommodel <value>", NamedTextColor.RED));
+                    return true;
+                }
+                int cmdValue;
+                try {
+                    cmdValue = Integer.parseInt(args[1]);
+                } catch (NumberFormatException e) {
+                    self.sendMessage(Component.text("Custom model data must be a number.", NamedTextColor.RED));
+                    return true;
+                }
+                if (cmdValue <= 0) {
+                    self.sendMessage(Component.text("Custom model data must be greater than 0.", NamedTextColor.RED));
+                    return true;
+                }
+                var data = plugin.getPlayerDataManager().getPlayerData(self);
+                if (data == null) {
+                    self.sendMessage(Component.text("Player data not loaded.", NamedTextColor.RED));
+                    return true;
+                }
+                if (data.hotbarLocked) {
+                    self.sendMessage(Component.text("Disable hotbar lock before customizing items.", NamedTextColor.RED));
+                    return true;
+                }
+                if (plugin.getEconomy() == null) {
+                    self.sendMessage(Component.text("Economy not available.", NamedTextColor.RED));
+                    return true;
+                }
+                double price = plugin.getConfig().getDouble("settings.custom-model-price", 0.0);
+                if (price <= 0) {
+                    self.sendMessage(Component.text("Custom model purchases are disabled.", NamedTextColor.RED));
+                    return true;
+                }
+                if (plugin.getEconomy().getBalance(self) < price) {
+                    self.sendMessage(Component.text("Not enough money.", NamedTextColor.RED));
+                    return true;
+                }
+                var item = self.getInventory().getItemInMainHand();
+                if (item == null || item.getType().isAir()) {
+                    self.sendMessage(Component.text("You must hold an item in your main hand.", NamedTextColor.RED));
+                    return true;
+                }
+                var meta = item.getItemMeta();
+                if (meta == null) {
+                    self.sendMessage(Component.text("This item cannot have custom model data.", NamedTextColor.RED));
+                    return true;
+                }
+                plugin.getEconomy().withdrawPlayer(self, price);
+                meta.setCustomModelData(cmdValue);
+                item.setItemMeta(meta);
+                self.sendMessage(Component.text("Custom model data applied.", NamedTextColor.GREEN));
+                break;
+
             default:
                 sender.sendMessage(Component.text("Unknown subcommand.", NamedTextColor.RED));
         }
@@ -113,6 +172,7 @@ public class FrostCommand implements CommandExecutor, TabCompleter {
                 completions.add("setprofile");
                 completions.add("listprofiles");
                 completions.add("givecosmetic");
+                completions.add("custommodel");
             }
         } else if (args.length == 2) {
             if (args[0].equalsIgnoreCase("setprofile") || args[0].equalsIgnoreCase("givecosmetic")) {

@@ -11,9 +11,15 @@ import java.util.logging.Level;
 public class DatabaseManager {
     private final Frost plugin;
     private Connection connection;
+    private final String databasePath;
 
     public DatabaseManager(Frost plugin) {
         this.plugin = plugin;
+        File dataFolder = plugin.getDataFolder();
+        if (!dataFolder.exists()) {
+            dataFolder.mkdirs();
+        }
+        this.databasePath = new File(dataFolder, "database.db").getAbsolutePath();
     }
 
     public void connect() {
@@ -29,8 +35,11 @@ public class DatabaseManager {
             }
 
             Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+            // Use connection properties to improve reliability
+            connection = DriverManager.getConnection("jdbc:sqlite:" + databasePath + "?journal_mode=WAL");
+            connection.setAutoCommit(true);
             initDatabase();
+            plugin.getLogger().info("Database connected successfully!");
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to connect to database", e);
         }
@@ -45,7 +54,7 @@ public class DatabaseManager {
                 "owned_cosmetics TEXT, " + // JSON: ["cosmetic1", "cosmetic2"]
                 "equipped_cosmetics TEXT" + // JSON: {"weapon-skins:0": "golden-spear"}
                 ");";
-        try (Statement stmt = connection.createStatement()) {
+        try (Statement stmt = getConnection().createStatement()) {
             stmt.execute(sql);
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to initialize database tables", e);
@@ -56,13 +65,39 @@ public class DatabaseManager {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
+                plugin.getLogger().info("Database disconnected successfully!");
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to close database connection", e);
         }
     }
 
-    public Connection getConnection() {
+    /**
+     * Get a connection, reconnecting if necessary
+     */
+    public synchronized Connection getConnection() {
+        try {
+            // Check if connection is closed or null, reconnect if needed
+            if (connection == null || connection.isClosed()) {
+                plugin.getLogger().warning("Database connection was closed, reconnecting...");
+                Class.forName("org.sqlite.JDBC");
+                connection = DriverManager.getConnection("jdbc:sqlite:" + databasePath + "?journal_mode=WAL");
+                connection.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to get/reconnect database connection", e);
+        }
         return connection;
+    }
+
+    /**
+     * Test if connection is alive
+     */
+    public boolean isConnected() {
+        try {
+            return connection != null && !connection.isClosed() && connection.isValid(1);
+        } catch (SQLException e) {
+            return false;
+        }
     }
 }

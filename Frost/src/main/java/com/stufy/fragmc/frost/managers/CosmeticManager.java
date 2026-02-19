@@ -43,13 +43,15 @@ public class CosmeticManager {
 
         for (String categoryId : cosmeticsSection.getKeys(false)) {
             var categorySection = cosmeticsSection.getConfigurationSection(categoryId);
-            if (categorySection == null) continue;
+            if (categorySection == null)
+                continue;
 
             String categoryName = categorySection.getString("category-name", categoryId);
             String categoryDesc = categorySection.getString("category-description", "");
             String iconMaterial = categorySection.getString("category-icon", "PAPER");
             Material icon = Material.matchMaterial(iconMaterial);
-            if (icon == null) icon = Material.PAPER;
+            if (icon == null)
+                icon = Material.PAPER;
 
             CosmeticCategory category = new CosmeticCategory(categoryId, categoryName, icon, categoryDesc);
 
@@ -79,8 +81,30 @@ public class CosmeticManager {
         return cosmeticsById.get(id);
     }
 
+    /**
+     * Check if a player can use a cosmetic (owns it or is admin)
+     */
+    public boolean canUseCosmetic(Player player, String cosmeticId) {
+        Cosmetic cosmetic = cosmeticsById.get(cosmeticId);
+        if (cosmetic == null)
+            return false;
+
+        // Admins have access to everything
+        if (player.hasPermission("frost.admin"))
+            return true;
+
+        // Admin-only cosmetics require admin permission
+        if (cosmetic.isAdminOnly())
+            return false;
+
+        // Check if player owns it
+        var data = plugin.getPlayerDataManager().getPlayerData(player);
+        return data != null && data.ownedCosmetics.contains(cosmeticId);
+    }
+
     public ItemStack applyCosmetic(ItemStack item, Cosmetic cosmetic) {
-        if (item == null || cosmetic == null) return item;
+        if (item == null || cosmetic == null)
+            return item;
 
         ItemStack modified = item.clone();
         ItemMeta meta = modified.getItemMeta();
@@ -137,7 +161,8 @@ public class CosmeticManager {
         }
 
         ConfigurationSection mods = cosmetic.getModifications();
-        if (mods == null) return;
+        if (mods == null)
+            return;
 
         if (cosmetic.getAppliesType().equals("armor-set")) {
             applyArmorPiece(player, "helmet", mods.getConfigurationSection("helmet"));
@@ -168,7 +193,8 @@ public class CosmeticManager {
     }
 
     private void applyArmorPiece(Player player, String slot, ConfigurationSection modsPiece) {
-        if (modsPiece == null) return;
+        if (modsPiece == null)
+            return;
         ItemStack piece = switch (slot.toLowerCase()) {
             case "helmet" -> player.getInventory().getHelmet();
             case "chestplate" -> player.getInventory().getChestplate();
@@ -179,10 +205,12 @@ public class CosmeticManager {
         if (piece == null || piece.getType() == Material.AIR) {
             piece = defaultArmorForSlot(slot);
         }
-        if (piece == null || piece.getType() == Material.AIR) return;
+        if (piece == null || piece.getType() == Material.AIR)
+            return;
 
         ItemMeta meta = piece.getItemMeta();
-        if (meta == null) return;
+        if (meta == null)
+            return;
 
         if (modsPiece.contains("custom-model-data")) {
             meta.setCustomModelData(modsPiece.getInt("custom-model-data"));
@@ -211,9 +239,11 @@ public class CosmeticManager {
             case "boots" -> player.getInventory().getBoots();
             default -> null;
         };
-        if (piece == null || piece.getType() == Material.AIR) return;
+        if (piece == null || piece.getType() == Material.AIR)
+            return;
         ItemMeta meta = piece.getItemMeta();
-        if (meta == null) return;
+        if (meta == null)
+            return;
         meta.setCustomModelData(null);
         meta.lore(null);
         piece.setItemMeta(meta);

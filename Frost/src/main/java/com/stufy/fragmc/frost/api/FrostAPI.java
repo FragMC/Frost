@@ -1,9 +1,12 @@
 package com.stufy.fragmc.frost.api;
 
 import com.stufy.fragmc.frost.Frost;
+import com.stufy.fragmc.frost.managers.PlayerDataManager;
+import com.stufy.fragmc.frost.models.Cosmetic;
+import com.stufy.fragmc.frost.models.CosmeticCategory;
 import org.bukkit.entity.Player;
 
-import java.util.Set;
+import java.util.*;
 
 /**
  * Public API for external plugins to interact with Frost
@@ -89,12 +92,128 @@ public class FrostAPI {
      * @return true if successful
      */
     public boolean removeCosmetic(Player player, String cosmeticId) {
-        var data = plugin.getPlayerDataManager().getPlayerData(player);
+        PlayerDataManager.PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
         if (data == null) return false;
 
         data.ownedCosmetics.remove(cosmeticId);
         plugin.getPlayerDataManager().savePlayerData(player);
         return true;
+    }
+
+    /**
+     * Purchase a cosmetic using Frost's economy and rules.
+     * Respects admin-only flags and player permissions.
+     */
+    public boolean purchaseCosmetic(Player player, String cosmeticId) {
+        Cosmetic cosmetic = plugin.getCosmeticManager().getCosmetic(cosmeticId);
+        if (cosmetic == null) return false;
+
+        PlayerDataManager.PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null) return false;
+
+        if (player.hasPermission("frost.admin") && cosmetic.isAdminOnly()) {
+            player.sendMessage(net.kyori.adventure.text.Component.text(
+                    "Admins automatically have access to all cosmetics.",
+                    net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            return false;
+        }
+
+        if (data.ownedCosmetics.contains(cosmetic.getId())) {
+            player.sendMessage(net.kyori.adventure.text.Component.text(
+                    "You already own this!",
+                    net.kyori.adventure.text.format.NamedTextColor.RED));
+            return false;
+        }
+
+        if (cosmetic.isAdminOnly() && !player.hasPermission("frost.admin")) {
+            player.sendMessage(net.kyori.adventure.text.Component.text(
+                    "This cosmetic is admin-only.",
+                    net.kyori.adventure.text.format.NamedTextColor.RED));
+            return false;
+        }
+
+        if (player.hasPermission("frost.admin")) {
+            player.sendMessage(net.kyori.adventure.text.Component.text(
+                    "Admins already have access to all cosmetics.",
+                    net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            return false;
+        }
+
+        if (plugin.getEconomy() == null) return false;
+
+        if (plugin.getEconomy().getBalance(player) >= cosmetic.getPrice()) {
+            plugin.getEconomy().withdrawPlayer(player, cosmetic.getPrice());
+            data.ownedCosmetics.add(cosmetic.getId());
+            plugin.getPlayerDataManager().savePlayerData(player);
+            player.sendMessage(net.kyori.adventure.text.Component.text(
+                            "Purchased ",
+                            net.kyori.adventure.text.format.NamedTextColor.GREEN)
+                    .append(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                            .deserialize(cosmetic.getName())));
+            return true;
+        } else {
+            player.sendMessage(net.kyori.adventure.text.Component.text(
+                    "Not enough money!",
+                    net.kyori.adventure.text.format.NamedTextColor.RED));
+            return false;
+        }
+    }
+
+    /**
+     * Get IDs of cosmetics actually owned by a player.
+     * Admins still implicitly have access to all cosmetics via permissions.
+     */
+    public Set<String> getOwnedCosmetics(Player player) {
+        PlayerDataManager.PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null) return Collections.emptySet();
+        return new HashSet<>(data.ownedCosmetics);
+    }
+
+    /**
+     * Get equipped cosmetics keys -> cosmetic IDs for a player.
+     */
+    public Map<String, String> getEquippedCosmetics(Player player) {
+        PlayerDataManager.PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null) return Collections.emptyMap();
+        return new HashMap<>(data.equippedCosmetics);
+    }
+
+    /**
+     * Get all cosmetic categories.
+     */
+    public Map<String, CosmeticCategory> getAllCategories() {
+        return plugin.getCosmeticManager().getCategories();
+    }
+
+    /**
+     * Get all cosmetics visible in the store for this player,
+     * filtered by admin-only flags and player permissions.
+     */
+    public List<Cosmetic> getStoreCosmetics(Player player) {
+        List<Cosmetic> result = new ArrayList<>();
+        boolean isAdmin = player.hasPermission("frost.admin");
+        for (CosmeticCategory category : plugin.getCosmeticManager().getCategories().values()) {
+            for (Cosmetic cosmetic : category.getCosmetics()) {
+                if (cosmetic.isAdminOnly() && !isAdmin) continue;
+                result.add(cosmetic);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Get cosmetics in a specific category visible to this player.
+     */
+    public List<Cosmetic> getStoreCosmeticsInCategory(Player player, String categoryId) {
+        CosmeticCategory category = plugin.getCosmeticManager().getCategories().get(categoryId);
+        if (category == null) return Collections.emptyList();
+        boolean isAdmin = player.hasPermission("frost.admin");
+        List<Cosmetic> result = new ArrayList<>();
+        for (Cosmetic cosmetic : category.getCosmetics()) {
+            if (cosmetic.isAdminOnly() && !isAdmin) continue;
+            result.add(cosmetic);
+        }
+        return result;
     }
 
     /**

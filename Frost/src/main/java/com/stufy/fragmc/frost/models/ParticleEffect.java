@@ -29,20 +29,21 @@ public class ParticleEffect {
     }
 
     public enum TriggerEvent {
-        ALWAYS,           // Continuous effect (1.8+)
-        JUMP,             // When player jumps (1.8+)
-        SNEAK,            // When player sneaks (1.8+)
-        SPRINT,           // When player sprints (1.8+)
-        DOUBLE_JUMP,      // When player double jumps (1.9+)
-        GLIDE,            // When using elytra (1.9+)
-        SWIM,             // When swimming (1.13+)
-        RIPTIDE,          // When using riptide trident (1.13+)
-        MACE_SMASH,       // When using mace smash attack (1.21+)
-        DAMAGE_TAKEN,     // When taking damage (1.8+)
-        DAMAGE_DEALT,     // When dealing damage (1.8+)
-        KILL,             // When killing an entity (1.8+)
-        BLOCK_BREAK,      // When breaking a block (1.8+)
-        BLOCK_PLACE       // When placing a block (1.8+)
+        ALWAYS,
+        JUMP,
+        SNEAK,
+        SPRINT,
+        DOUBLE_JUMP,
+        GLIDE,
+        SWIM,
+        RIPTIDE,
+        MACE_SMASH,
+        SPEAR_CHANGE,
+        DAMAGE_TAKEN,
+        DAMAGE_DEALT,
+        KILL,
+        BLOCK_BREAK,
+        BLOCK_PLACE
     }
 
     public ParticleEffect(String id, String categoryId, ConfigurationSection section) {
@@ -121,8 +122,8 @@ public class ParticleEffect {
         return switch (triggerEvent) {
             case DOUBLE_JUMP, GLIDE -> version >= 1.09;
             case SWIM, RIPTIDE -> version >= 1.13;
-            case MACE_SMASH -> version >= 1.21;
-            default -> true; // Available in all versions (1.8+)
+            case MACE_SMASH, SPEAR_CHANGE -> version >= 1.21;
+            default -> true;
         };
     }
 

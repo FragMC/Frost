@@ -438,6 +438,22 @@ cosmetics:
         offset-z: 2.0
         speed: 0.3
 
+      spear-change-burst:
+        name: "<white><bold>Spear Change Burst</bold>"
+        description:
+          - "<white>Impact burst when using spear change"
+          - "<gray>Trigger: Spear Change (1.21.11+)"
+        price: 6000.0
+        icon: IRON_SWORD
+        particle: CRIT
+        effect-type: BURST
+        trigger: SPEAR_CHANGE
+        count: 20
+        offset-x: 0.5
+        offset-y: 0.5
+        offset-z: 0.5
+        speed: 0.2
+
       # DAMAGE EFFECTS (1.8+)
 
       blood-hit:

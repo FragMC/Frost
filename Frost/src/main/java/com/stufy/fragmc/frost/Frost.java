@@ -15,9 +15,11 @@ import com.stufy.fragmc.frost.managers.ParticleManager;
 import com.stufy.fragmc.frost.managers.PlayerDataManager;
 import com.stufy.fragmc.frost.managers.ProfileManager;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public class Frost extends JavaPlugin {
 
@@ -33,6 +35,7 @@ public class Frost extends JavaPlugin {
     private ParticleListener particleListener;
     private GuiManager guiManager;
     private FrostAPI api;
+    private BukkitTask autoSaveTask;
 
     @Override
     public void onEnable() {
@@ -74,21 +77,39 @@ public class Frost extends JavaPlugin {
         getCommand("equip").setExecutor(new EquipCommand(this));
         getCommand("togglelock").setExecutor(new ToggleLockCommand(this));
 
+        // Load data for any online players (in case of reload)
+        for (Player player : getServer().getOnlinePlayers()) {
+            playerDataManager.loadPlayerData(player);
+        }
+
+        // Start auto-save task (every 5 minutes)
+        startAutoSaveTask();
+
         getLogger().info("Frost Plugin has been enabled!");
         getLogger().info("Using SQLite database for player data storage");
         getLogger().info("API registered for external plugin integration");
+        getLogger().info("Auto-save task started (5 minute intervals)");
     }
 
     @Override
     public void onDisable() {
+        // Cancel auto-save task
+        if (autoSaveTask != null) {
+            autoSaveTask.cancel();
+        }
+
+        // Clean up particle manager
         if (particleManager != null) {
             particleManager.cleanup();
         }
 
+        // Save all player data
         if (playerDataManager != null) {
+            getLogger().info("Saving all player data before shutdown...");
             playerDataManager.saveAllPlayerData();
         }
 
+        // Disconnect database
         if (databaseManager != null) {
             databaseManager.disconnect();
         }
@@ -106,6 +127,22 @@ public class Frost extends JavaPlugin {
         }
         economy = rsp.getProvider();
         return economy != null;
+    }
+
+    /**
+     * Start auto-save task to periodically save player data
+     */
+    private void startAutoSaveTask() {
+        // Run every 5 minutes (6000 ticks)
+        autoSaveTask = getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+            if (playerDataManager != null) {
+                getLogger().info("Auto-saving player data...");
+                // Run actual save on main thread for safety
+                getServer().getScheduler().runTask(this, () -> {
+                    playerDataManager.saveAllPlayerData();
+                });
+            }
+        }, 6000L, 6000L);
     }
 
     public static Frost getInstance() {
