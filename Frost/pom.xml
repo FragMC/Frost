@@ -15,6 +15,14 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/FragMC/Frost</url>
+        </repository>
+    </distributionManagement>
+
     <repositories>
         <repository>
             <id>papermc</id>
@@ -31,6 +39,12 @@
         <repository>
             <id>opencollab-releases</id>
             <url>https://repo.opencollab.dev/maven-releases/</url>
+        </repository>
+        <!-- GitHub Packages - FragMC internal dependencies -->
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages - FragMC</name>
+            <url>https://maven.pkg.github.com/FragMC/Icedspear</url>
         </repository>
     </repositories>
 
