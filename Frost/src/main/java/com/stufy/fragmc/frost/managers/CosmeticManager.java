@@ -107,6 +107,15 @@ public class CosmeticManager {
             return item;
 
         ItemStack modified = item.clone();
+        // Apply FreeMinecraftModels model first if configured (proper item skins)
+        ConfigurationSection modsCheck = cosmetic.getModifications();
+        if (modsCheck != null && modsCheck.contains("fmm_model")) {
+            String fmmModel = modsCheck.getString("fmm_model");
+            if (fmmModel != null && plugin.getFmmHook() != null && plugin.getFmmHook().isFmmPresent()) {
+                modified = plugin.getFmmHook().applyFmmModel(modified, fmmModel);
+            }
+        }
+
         ItemMeta meta = modified.getItemMeta();
         ConfigurationSection mods = cosmetic.getModifications();
 
@@ -124,6 +133,16 @@ public class CosmeticManager {
 
             if (mods.contains("custom-model-data")) {
                 meta.setCustomModelData(mods.getInt("custom-model-data"));
+            }
+
+            // Also support fmm_model as alternative to custom-model-data for cleaner config
+            if (mods.contains("fmm_model") && plugin.getFmmHook() != null && plugin.getFmmHook().isFmmPresent()) {
+                // already applied above, but also ensure PDC tag persists after meta edits
+                meta.getPersistentDataContainer().set(
+                        new NamespacedKey(plugin, "fmm_model"),
+                        org.bukkit.persistence.PersistentDataType.STRING,
+                        mods.getString("fmm_model")
+                );
             }
 
             if (mods.contains("enchantments")) {

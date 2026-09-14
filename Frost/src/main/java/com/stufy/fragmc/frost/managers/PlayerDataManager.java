@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.stufy.fragmc.frost.Frost;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -65,6 +66,30 @@ public class PlayerDataManager {
                     } catch (Exception e) {
                         plugin.getLogger().warning("Failed to parse equipped cosmetics for " + player.getName() + ": " + e.getMessage());
                     }
+                }
+
+                // Load custom hotbar (slots 3-8) - stored as Map<Integer, Map<String,Object>> serialized ItemStacks
+                try {
+                    String customHotbarJson = null;
+                    try { customHotbarJson = rs.getString("custom_hotbar"); } catch (SQLException ignored) {}
+                    if (customHotbarJson != null && !customHotbarJson.isEmpty()) {
+                        Map<String, Map<String,Object>> raw = gson.fromJson(customHotbarJson, new TypeToken<Map<String, Map<String,Object>>>() {}.getType());
+                        if (raw != null) {
+                            Map<Integer, ItemStack> custom = new HashMap<>();
+                            for (Map.Entry<String, Map<String,Object>> e : raw.entrySet()) {
+                                try {
+                                    int slot = Integer.parseInt(e.getKey());
+                                    ItemStack item = ItemStack.deserialize(e.getValue());
+                                    custom.put(slot, item);
+                                } catch (Exception ex) {
+                                    plugin.getLogger().warning("Failed to deserialize custom hotbar slot " + e.getKey() + " for " + player.getName());
+                                }
+                            }
+                            data.customHotbar = custom;
+                        }
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to parse custom hotbar for " + player.getName() + ": " + e.getMessage());
                 }
             } else {
                 // New player, save default data
@@ -129,13 +154,31 @@ public class PlayerDataManager {
                 return;
             }
 
-            String sql = "INSERT OR REPLACE INTO player_data (uuid, hotbar_locked, current_profile, owned_cosmetics, equipped_cosmetics) VALUES (?, ?, ?, ?, ?)";
+            // Ensure custom_hotbar column exists (migration)
+            try { conn.createStatement().execute("ALTER TABLE player_data ADD COLUMN custom_hotbar TEXT"); } catch (SQLException ignored) {}
+
+            // Serialize custom hotbar
+            String customHotbarJson = null;
+            if (data.customHotbar != null && !data.customHotbar.isEmpty()) {
+                Map<String, Map<String,Object>> serial = new HashMap<>();
+                for (Map.Entry<Integer, ItemStack> e : data.customHotbar.entrySet()) {
+                    try {
+                        serial.put(String.valueOf(e.getKey()), e.getValue().serialize());
+                    } catch (Exception ex) {
+                        plugin.getLogger().warning("Failed to serialize custom hotbar slot " + e.getKey());
+                    }
+                }
+                customHotbarJson = gson.toJson(serial);
+            }
+
+            String sql = "INSERT OR REPLACE INTO player_data (uuid, hotbar_locked, current_profile, owned_cosmetics, equipped_cosmetics, custom_hotbar) VALUES (?, ?, ?, ?, ?, ?)";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setString(1, uuid.toString());
             stmt.setBoolean(2, data.hotbarLocked);
             stmt.setString(3, data.currentProfile);
             stmt.setString(4, gson.toJson(data.ownedCosmetics));
             stmt.setString(5, gson.toJson(data.equippedCosmetics));
+            stmt.setString(6, customHotbarJson);
             stmt.executeUpdate();
             stmt.close();
         } catch (SQLException e) {
@@ -176,5 +219,7 @@ public class PlayerDataManager {
         public String currentProfile = "warrior";
         public Set<String> ownedCosmetics = new HashSet<>();
         public Map<String, String> equippedCosmetics = new HashMap<>();
+        // Custom hotbar layout for slots 3-8 (0-2 are fixed spear/mace/wind). Persisted as custom_hotbar.
+        public Map<Integer, ItemStack> customHotbar = new HashMap<>();
     }
 }

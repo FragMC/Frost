@@ -39,7 +39,19 @@ public class FrostCommand implements CommandExecutor, TabCompleter {
                 plugin.getConfigManager().loadConfig();
                 plugin.getProfileManager().loadProfiles();
                 plugin.getCosmeticManager().loadCosmetics();
+                if (plugin.getFmmHook() != null) plugin.getFmmHook().onReload();
                 sender.sendMessage(Component.text("Configuration reloaded.", NamedTextColor.GREEN));
+                break;
+
+            case "inventory":
+            case "inv":
+            case "custominv":
+            case "hotbar":
+                if (!(sender instanceof Player p)) {
+                    sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
+                    return true;
+                }
+                plugin.getInventoryCustomizerManager().openCustomizer(p);
                 break;
 
             case "setprofile":

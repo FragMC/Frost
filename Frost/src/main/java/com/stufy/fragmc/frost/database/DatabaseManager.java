@@ -46,16 +46,19 @@ public class DatabaseManager {
     }
 
     private void initDatabase() {
-        // Updated table structure with profiles and cosmetics
+        // Updated table structure with profiles, cosmetics and custom hotbar
         String sql = "CREATE TABLE IF NOT EXISTS player_data (" +
                 "uuid VARCHAR(36) PRIMARY KEY, " +
                 "hotbar_locked BOOLEAN DEFAULT 1, " +
                 "current_profile VARCHAR(50) DEFAULT 'warrior', " +
                 "owned_cosmetics TEXT, " + // JSON: ["cosmetic1", "cosmetic2"]
-                "equipped_cosmetics TEXT" + // JSON: {"weapon-skins:0": "golden-spear"}
+                "equipped_cosmetics TEXT," + // JSON: {"weapon-skins:0": "golden-spear"}
+                "custom_hotbar TEXT" + // JSON: {"3": {serialized ItemStack}, ...} for slots 3-8
                 ");";
         try (Statement stmt = getConnection().createStatement()) {
             stmt.execute(sql);
+            // Migration for existing databases missing custom_hotbar
+            try { stmt.execute("ALTER TABLE player_data ADD COLUMN custom_hotbar TEXT"); } catch (SQLException ignored) {}
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to initialize database tables", e);
         }

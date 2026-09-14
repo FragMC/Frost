@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -40,6 +40,10 @@
             <id>opencollab-releases</id>
             <url>https://repo.opencollab.dev/maven-releases/</url>
         </repository>
+        <repository>
+            <id>magmaguy-repo-releases</id>
+            <url>https://repo.magmaguy.com/releases</url>
+        </repository>
         <!-- GitHub Packages - FragMC internal dependencies -->
         <repository>
             <id>github</id>
@@ -49,11 +53,11 @@
     </repositories>
 
     <dependencies>
-        <!-- Paper API -->
+        <!-- Paper API 26.2 -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.21.1-R0.1-SNAPSHOT</version>
+            <version>[26.2.build,)</version>
             <scope>provided</scope>
         </dependency>
 
@@ -94,6 +98,14 @@
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
+
+        <!-- FreeMinecraftModels - proper item skins -->
+        <dependency>
+            <groupId>com.magmaguy</groupId>
+            <artifactId>FreeMinecraftModels</artifactId>
+            <version>2.7.1</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -103,8 +115,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
+                    <source>25</source>
+                    <target>25</target>
                 </configuration>
             </plugin>
             <plugin>

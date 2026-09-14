@@ -18,14 +18,15 @@ settings:
 profiles:
   warrior:
     display-name: "<red><bold>Warrior Profile</bold></red>"
-    description: "Melee combat focused loadout"
+    description: "Melee combat focused loadout - Spear/Mace/Wind always in slots 1-3"
     hotbar-items:
       0:
-        material: DIAMOND_SWORD
-        custom-name: "<aqua>Spear"
+        material: TRIDENT
+        custom-name: "<aqua><bold>Spear</bold> <gray>(Locked Slot 1)"
         lore:
           - "<aqua>Your spear for your journey"
           - "<aqua>across the landscape on FragMC"
+          - "<gray>Always in slot 1 - cannot be moved"
         enchantments:
           sharpness: 5
           unbreaking: 3
@@ -33,22 +34,33 @@ profiles:
           - HIDE_ENCHANTS
           - HIDE_ATTRIBUTES
         custom-model-data: 1001
+        fmm_model: "frost_spear"
       1:
-        material: BOW
-        custom-name: "<gold>Longbow"
+        material: MACE
+        custom-name: "<gold><bold>Mace</bold> <gray>(Locked Slot 2)"
         lore:
-          - "<gray>A reliable ranged weapon"
+          - "<gray>Your mace - always in slot 2"
+          - "<gray>Cannot be moved - customize in /inventory"
         enchantments:
-          power: 4
-          infinity: 1
+          unbreaking: 3
         custom-model-data: 1002
+        fmm_model: "frost_mace"
       2:
-        material: SHIELD
-        custom-name: "<blue>Guardian Shield"
+        material: WIND_CHARGE
+        custom-name: "<white><bold>Wind Charge</bold> <gray>(Locked Slot 3)"
+        lore:
+          - "<white>Your wind charge - always in slot 3"
+          - "<gray>Cannot be moved"
         custom-model-data: 1003
-      8:
+        fmm_model: "frost_wind_charge"
+      # Slots 3-8 are customizable via /inventory (double chest GUI with gray glass for locked slots)
+      # Defaults below are used if player has no custom layout yet
+      3:
         material: COOKED_BEEF
         custom-name: "<yellow>Rations"
+      4:
+        material: ENDER_PEARL
+        custom-name: "<light_purple>Ender Pearl"
 
   archer:
     display-name: "<green><bold>Archer Profile</bold></green>"
@@ -112,6 +124,8 @@ cosmetics:
           slot: 0
         modifications:
           custom-model-data: 2001
+          # Proper item skin via FreeMinecraftModels - place frost_golden_spear.bbmodel in plugins/FreeMinecraftModels/models/ and run /fmm reload
+          fmm_model: "frost_golden_spear"
           lore:
             - "<gold>Shiny and golden!"
             - "<gray>A mark of wealth and power"
@@ -547,6 +561,28 @@ cosmetics:
 shop:
   title: "<gradient:aqua:blue>Cosmetics Shop</gradient>"
   rows: 6  # Chest GUI rows (1-6)
+
+# ===================================
+# INVENTORY CUSTOMIZER (NEW in 26.2)
+# ===================================
+# Double chest (54 slots) GUI for hotbar customization
+# - Locked slots 0,1,2: Spear, Mace, Wind Charge (gray glass filler for blocked)
+# - Customizable 3-8: drag items from inventory
+# - FMM: if FreeMinecraftModels is installed, fmm_model is used for proper item skins
+inventory:
+  title: "<gradient:aqua:blue>Customize Inventory</gradient>"
+  locked-lore: "<gray>Always in slot %slot% - use /inventory to customize 4-9"
+
+# ===================================
+# FREEMINECRAFTMODELS INTEGRATION
+# ===================================
+# Put Blockbench .bbmodel files in plugins/FreeMinecraftModels/models/
+# Add sibling .yml with material: TRIDENT etc. and optional .json for display item.
+# Run /fmm reload, then set fmm_model: "your_model_id" in cosmetics or hotbar-items.
+# See https://github.com/MagmaGuy/FreeMinecraftModels
+fmm:
+  enabled: true
+  fallback-to-custom-model-data: true
 
 # ===================================
 # PERMISSIONS

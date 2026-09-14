@@ -1,16 +1,17 @@
 name: Frost
 version: 1.0.0
 main: com.stufy.fragmc.frost.Frost
-api-version: 1.21
+api-version: '26.2'
 depend:
   - Vault
 softdepend:
   - Geyser-Spigot
   - floodgate
+  - FreeMinecraftModels
 commands:
   frost:
     description: Admin Frost command
-    usage: /frost <reload|setprofile|listprofiles|givecosmetic>
+    usage: /frost <reload|setprofile|listprofiles|givecosmetic|inventory>
     permission: frost.admin
   shop:
     description: Open the cosmetics shop
@@ -21,6 +22,10 @@ commands:
   togglelock:
     description: Toggle hotbar lock
     usage: /togglelock
+  inventory:
+    description: Customize your hotbar (slots 4-9) - double chest GUI
+    usage: /inventory
+    aliases: [inv, custominv, hotbar]
 
 permissions:
   frost.admin:

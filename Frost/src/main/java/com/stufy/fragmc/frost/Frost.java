@@ -11,9 +11,11 @@ import com.stufy.fragmc.frost.listeners.ParticleListener;
 import com.stufy.fragmc.frost.managers.ConfigManager;
 import com.stufy.fragmc.frost.managers.CosmeticManager;
 import com.stufy.fragmc.frost.managers.GuiManager;
+import com.stufy.fragmc.frost.managers.InventoryCustomizerManager;
 import com.stufy.fragmc.frost.managers.ParticleManager;
 import com.stufy.fragmc.frost.managers.PlayerDataManager;
 import com.stufy.fragmc.frost.managers.ProfileManager;
+import com.stufy.fragmc.frost.support.FmmHook;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -34,6 +36,8 @@ public class Frost extends JavaPlugin {
     private HotbarLockListener hotbarLockListener;
     private ParticleListener particleListener;
     private GuiManager guiManager;
+    private InventoryCustomizerManager inventoryCustomizerManager;
+    private FmmHook fmmHook;
     private FrostAPI api;
     private BukkitTask autoSaveTask;
 
@@ -54,12 +58,14 @@ public class Frost extends JavaPlugin {
         }
 
         // Initialize managers in correct order
+        fmmHook = new FmmHook(this);
         configManager = new ConfigManager(this);
         profileManager = new ProfileManager(this);
         cosmeticManager = new CosmeticManager(this);
         particleManager = new ParticleManager(this);
         playerDataManager = new PlayerDataManager(this);
         guiManager = new GuiManager(this);
+        inventoryCustomizerManager = new InventoryCustomizerManager(this);
 
         // Initialize API
         api = new FrostAPI(this);
@@ -76,6 +82,17 @@ public class Frost extends JavaPlugin {
         getCommand("shop").setExecutor(new ShopCommand(this));
         getCommand("equip").setExecutor(new EquipCommand(this));
         getCommand("togglelock").setExecutor(new ToggleLockCommand(this));
+        // inventory command handled via FrostCommand / InventoryCustomizerManager
+        if (getCommand("inventory") != null) {
+            getCommand("inventory").setExecutor((sender, command, label, args) -> {
+                if (!(sender instanceof Player p)) {
+                    sender.sendMessage("Players only.");
+                    return true;
+                }
+                inventoryCustomizerManager.openCustomizer(p);
+                return true;
+            });
+        }
 
         // Load data for any online players (in case of reload)
         for (Player player : getServer().getOnlinePlayers()) {
@@ -183,6 +200,14 @@ public class Frost extends JavaPlugin {
 
     public HotbarLockListener getHotbarLockListener() {
         return hotbarLockListener;
+    }
+
+    public InventoryCustomizerManager getInventoryCustomizerManager() {
+        return inventoryCustomizerManager;
+    }
+
+    public FmmHook getFmmHook() {
+        return fmmHook;
     }
 
     public FrostAPI getAPI() {

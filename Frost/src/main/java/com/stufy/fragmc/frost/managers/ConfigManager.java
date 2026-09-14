@@ -56,6 +56,18 @@ public class ConfigManager {
                 meta.setCustomModelData(section.getInt("custom-model-data"));
             }
 
+            if (section.contains("fmm_model")) {
+                String fmmModel = section.getString("fmm_model");
+                if (fmmModel != null && plugin.getFmmHook() != null && plugin.getFmmHook().isFmmPresent()) {
+                    meta.getPersistentDataContainer().set(
+                            new NamespacedKey(plugin, "fmm_model"),
+                            org.bukkit.persistence.PersistentDataType.STRING,
+                            fmmModel
+                    );
+                    // Also keep visual fallback: if no custom-model-data, use a placeholder
+                }
+            }
+
             if (section.contains("enchantments")) {
                 ConfigurationSection enchants = section.getConfigurationSection("enchantments");
                 if (enchants != null) {
