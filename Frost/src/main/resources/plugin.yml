@@ -1,5 +1,5 @@
 name: Frost
-version: 1.0.0
+version: 2.0.0-alpha
 main: com.stufy.fragmc.frost.Frost
 api-version: '26.2'
 depend:
