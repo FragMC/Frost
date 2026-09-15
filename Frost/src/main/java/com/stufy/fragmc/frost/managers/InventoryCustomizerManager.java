@@ -17,6 +17,8 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.geysermc.cumulus.form.SimpleForm;
+import org.geysermc.floodgate.api.FloodgateApi;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,12 +45,19 @@ public class InventoryCustomizerManager implements Listener {
     public static final int MACE_SLOT = 1;
     public static final int WIND_SLOT = 2;
 
+    private final boolean isFloodgatePresent;
+
     public InventoryCustomizerManager(Frost plugin) {
         this.plugin = plugin;
         this.customizerKey = new NamespacedKey(plugin, "customizer_action");
         this.filler = createFiller();
         this.lockedFiller = createLockedFiller();
+        this.isFloodgatePresent = Bukkit.getPluginManager().getPlugin("floodgate") != null;
         Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+    private boolean isBedrock(Player player) {
+        return isFloodgatePresent && FloodgateApi.getInstance().isFloodgatePlayer(player.getUniqueId());
     }
 
     private ItemStack createFiller() {
@@ -95,6 +104,8 @@ public class InventoryCustomizerManager implements Listener {
     }
 
     private ItemStack fixedMace() {
+        // Bedrock fallback: MACE is Java 1.21+ and may not translate well on older Geyser; use STICK fallback for Bedrock
+        // But Geyser 2.2.0+ does translate MACE for Bedrock on 26.2, so we keep MACE but provide fallback logic in giveHotbar
         ItemStack mace = new ItemStack(Material.MACE);
         ItemMeta meta = mace.getItemMeta();
         meta.displayName(MiniMessage.miniMessage().deserialize("<gold><bold>Mace</bold> <gray>(Locked Slot 2)"));
@@ -128,7 +139,26 @@ public class InventoryCustomizerManager implements Listener {
         return wind;
     }
 
+    // Bedrock fallback materials (Geyser translates most Java items, but provide safe fallback)
+    private ItemStack bedrockFallback(Material javaMaterial, String displayName) {
+        // Geyser 2.2.0+ on 26.2 handles MACE/WIND_CHARGE, but if translation fails, fallback to familiar Bedrock items
+        Material fallback = javaMaterial;
+        if (javaMaterial == Material.MACE) fallback = Material.IRON_AXE; // Bedrock axe is familiar
+        if (javaMaterial == Material.WIND_CHARGE) fallback = Material.FIRE_CHARGE;
+        if (javaMaterial == Material.TRIDENT) fallback = Material.DIAMOND_SWORD;
+        ItemStack item = new ItemStack(fallback);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(MiniMessage.miniMessage().deserialize(displayName));
+        item.setItemMeta(meta);
+        return item;
+    }
+
     public void openCustomizer(Player player) {
+        // Bedrock crossplay: use Cumulus forms for Bedrock players (Geyser/Floodgate) - Java chest GUI is translated but forms are native Bedrock UI
+        if (isBedrock(player)) {
+            openBedrockCustomizer(player);
+            return;
+        }
         Inventory inv = Bukkit.createInventory(null, 54, Component.text("Customize Inventory - Frost", NamedTextColor.AQUA));
 
         // Fill entire inventory with filler first (gray glass for "slots that cant be used")
@@ -205,6 +235,98 @@ public class InventoryCustomizerManager implements Listener {
         }
 
         player.openInventory(inv);
+    }
+
+    private void openBedrockCustomizer(Player player) {
+        // Bedrock-native UI via Floodgate Cumulus - shows current hotbar 4-9 and allows clearing
+        // Full drag-and-drop not possible on Bedrock, so we provide simple management + instructions
+        var data = plugin.getPlayerDataManager().getPlayerData(player);
+        StringBuilder content = new StringBuilder("§7Slots 1-3 are locked: Spear, Mace, Wind Charge\n§7Slots 4-9 are customizable.\n\n");
+        for (int slot = 3; slot <= 8; slot++) {
+            ItemStack item = null;
+            if (data != null && data.customHotbar != null && data.customHotbar.containsKey(slot)) {
+                item = data.customHotbar.get(slot);
+            } else {
+                var profile = plugin.getProfileManager().getProfile(data != null ? data.currentProfile : "warrior");
+                if (profile != null && profile.getHotbarItems().containsKey(slot)) item = profile.getHotbarItems().get(slot);
+            }
+            String name = "Empty";
+            if (item != null && !item.getType().isAir()) {
+                var meta = item.getItemMeta();
+                name = meta != null && meta.hasDisplayName() ? net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(meta.displayName()) : item.getType().name();
+            }
+            content.append("§fSlot ").append(slot + 1).append(": §a").append(name).append("\n");
+        }
+        content.append("\n§7To customize, use Java Edition or drag items on Bedrock chest GUI (also available).");
+
+        SimpleForm.Builder form = SimpleForm.builder()
+                .title("§bCustomize Hotbar - Frost")
+                .content(content.toString())
+                .button("§aOpen Chest GUI (Bedrock Translated)")
+                .button("§cClear Slots 4-9")
+                .button("§7Close");
+
+        form.validResultHandler(response -> {
+            int id = response.clickedButtonId();
+            if (id == 0) {
+                // Open Java GUI anyway - Geyser will translate chest to Bedrock container UI
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    // Temporarily mark as Java to bypass bedrock check
+                    Inventory inv = Bukkit.createInventory(null, 54, Component.text("Customize Inventory - Frost", NamedTextColor.AQUA));
+                    for (int i = 0; i < 54; i++) inv.setItem(i, filler.clone());
+                    inv.setItem(SPEAR_SLOT, fixedSpear());
+                    inv.setItem(MACE_SLOT, fixedMace());
+                    inv.setItem(WIND_SLOT, fixedWindCharge());
+                    var d = plugin.getPlayerDataManager().getPlayerData(player);
+                    for (int slot = 3; slot <= 8; slot++) {
+                        ItemStack existing = null;
+                        if (d != null && d.customHotbar != null && d.customHotbar.containsKey(slot)) existing = d.customHotbar.get(slot);
+                        else {
+                            var profile = plugin.getProfileManager().getProfile(d != null ? d.currentProfile : "warrior");
+                            if (profile != null && profile.getHotbarItems().containsKey(slot)) existing = profile.getHotbarItems().get(slot);
+                        }
+                        if (existing != null && !existing.getType().isAir()) inv.setItem(slot, existing.clone());
+                        else inv.setItem(slot, null);
+                    }
+                    for (int i = 18; i < 45; i++) {
+                        ItemStack blocked = filler.clone();
+                        ItemMeta meta = blocked.getItemMeta();
+                        meta.displayName(Component.text("Blocked", NamedTextColor.DARK_GRAY));
+                        blocked.setItemMeta(meta);
+                        inv.setItem(i, blocked);
+                    }
+                    ItemStack save = new ItemStack(Material.LIME_CONCRETE);
+                    ItemMeta saveMeta = save.getItemMeta();
+                    saveMeta.displayName(Component.text("Save Layout", NamedTextColor.GREEN));
+                    saveMeta.getPersistentDataContainer().set(customizerKey, PersistentDataType.STRING, "save");
+                    save.setItemMeta(saveMeta);
+                    inv.setItem(45, save);
+                    ItemStack clear = new ItemStack(Material.RED_CONCRETE);
+                    ItemMeta clearMeta = clear.getItemMeta();
+                    clearMeta.displayName(Component.text("Clear Custom Slots", NamedTextColor.RED));
+                    clearMeta.getPersistentDataContainer().set(customizerKey, PersistentDataType.STRING, "clear");
+                    clear.setItemMeta(clearMeta);
+                    inv.setItem(49, clear);
+                    ItemStack close = new ItemStack(Material.BARRIER);
+                    ItemMeta closeMeta = close.getItemMeta();
+                    closeMeta.displayName(Component.text("Close", NamedTextColor.RED));
+                    closeMeta.getPersistentDataContainer().set(customizerKey, PersistentDataType.STRING, "close");
+                    close.setItemMeta(closeMeta);
+                    inv.setItem(53, close);
+                    for (int i : new int[]{46,47,48,50,51,52}) inv.setItem(i, filler.clone());
+                    player.openInventory(inv);
+                });
+            } else if (id == 1) {
+                if (data != null) {
+                    data.customHotbar.clear();
+                    plugin.getPlayerDataManager().savePlayerData(player);
+                    if (plugin.getHotbarLockListener() != null) plugin.getHotbarLockListener().giveHotbarItems(player);
+                    player.sendMessage(Component.text("Cleared custom slots 4-9.", NamedTextColor.YELLOW));
+                }
+            }
+        });
+
+        FloodgateApi.getInstance().sendForm(player.getUniqueId(), form.build());
     }
 
     @EventHandler

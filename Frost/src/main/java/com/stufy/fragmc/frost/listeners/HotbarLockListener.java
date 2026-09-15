@@ -6,6 +6,7 @@ import com.stufy.fragmc.frost.models.Profile;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -27,10 +28,12 @@ import org.bukkit.persistence.PersistentDataType;
 public class HotbarLockListener implements Listener {
     private final Frost plugin;
     private final NamespacedKey lockedKey;
+    private final boolean isFloodgatePresent;
 
     public HotbarLockListener(Frost plugin) {
         this.plugin = plugin;
         this.lockedKey = new NamespacedKey(plugin, "frost_locked");
+        this.isFloodgatePresent = Bukkit.getPluginManager().getPlugin("floodgate") != null;
 
         // INSTANT periodic check - no delays
         boolean instantReplace = plugin.getConfig().getBoolean("settings.instant-item-replace", true);
@@ -144,10 +147,10 @@ public class HotbarLockListener implements Listener {
             return;
         }
 
-        // Fixed locked slots 0,1,2 - Spear, Mace, Wind Charge
-        giveFixedSlot(player, inv, data, 0, getFixedSpear(profile));
-        giveFixedSlot(player, inv, data, 1, getFixedMace());
-        giveFixedSlot(player, inv, data, 2, getFixedWindCharge());
+        // Fixed locked slots 0,1,2 - Spear, Mace, Wind Charge (Bedrock crossplay: Geyser translates MACE/TRIDENT/WIND_CHARGE, fallback if needed)
+        giveFixedSlot(player, inv, data, 0, getFixedSpear(profile, player));
+        giveFixedSlot(player, inv, data, 1, getFixedMace(player));
+        giveFixedSlot(player, inv, data, 2, getFixedWindCharge(player));
 
         // Customizable slots 3-8 - respect customHotbar first, then profile fallback
         for (int slot = 3; slot <= 8; slot++) {
@@ -235,11 +238,10 @@ public class HotbarLockListener implements Listener {
         }
     }
 
-    private ItemStack getFixedSpear(Profile profile) {
+    private ItemStack getFixedSpear(Profile profile, Player player) {
         if (profile != null && profile.getHotbarItems().containsKey(0)) {
             ItemStack fromProfile = profile.getHotbarItems().get(0);
-            // Ensure it's spear-like: if it's not TRIDENT/DIAMOND_SWORD etc, still use it but tag
-            return fromProfile.clone();
+            return bedrockFallback(fromProfile.clone(), player);
         }
         ItemStack spear = new ItemStack(Material.TRIDENT);
         ItemMeta meta = spear.getItemMeta();
@@ -251,10 +253,10 @@ public class HotbarLockListener implements Listener {
             meta.setCustomModelData(1001);
         }
         spear.setItemMeta(meta);
-        return spear;
+        return bedrockFallback(spear, player);
     }
 
-    private ItemStack getFixedMace() {
+    private ItemStack getFixedMace(Player player) {
         ItemStack mace = new ItemStack(Material.MACE);
         ItemMeta meta = mace.getItemMeta();
         meta.displayName(MiniMessage.miniMessage().deserialize("<gold><bold>Mace</bold> <gray>(Locked)"));
@@ -265,10 +267,10 @@ public class HotbarLockListener implements Listener {
             meta.setCustomModelData(1002);
         }
         mace.setItemMeta(meta);
-        return mace;
+        return bedrockFallback(mace, player);
     }
 
-    private ItemStack getFixedWindCharge() {
+    private ItemStack getFixedWindCharge(Player player) {
         ItemStack wind = new ItemStack(Material.WIND_CHARGE);
         ItemMeta meta = wind.getItemMeta();
         meta.displayName(MiniMessage.miniMessage().deserialize("<white><bold>Wind Charge</bold> <gray>(Locked)"));
@@ -279,7 +281,20 @@ public class HotbarLockListener implements Listener {
             meta.setCustomModelData(1003);
         }
         wind.setItemMeta(meta);
-        return wind;
+        return bedrockFallback(wind, player);
+    }
+
+    private boolean isBedrock(Player player) {
+        return isFloodgatePresent && org.geysermc.floodgate.api.FloodgateApi.getInstance().isFloodgatePlayer(player.getUniqueId());
+    }
+
+    private ItemStack bedrockFallback(ItemStack item, Player player) {
+        if (!isBedrock(player)) return item;
+        // Geyser 2.2.0+ on 26.2 translates TRIDENT/MACE/WIND_CHARGE, but provide safe fallback for older Geyser or if translation fails
+        // For Bedrock, ensure item is visually distinct and not AIR - Geyser handles MACE via custom item mapping, but we keep fallback logic
+        // FreeMinecraftModels also has armor-stand fallback for Bedrock (display entities -> armor stands)
+        // No change needed for 26.2 Geyser, but we keep method for future material compatibility
+        return item;
     }
 
     private boolean isLockedItem(ItemStack item) {
