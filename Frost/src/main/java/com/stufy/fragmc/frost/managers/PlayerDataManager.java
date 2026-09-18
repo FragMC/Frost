@@ -68,24 +68,47 @@ public class PlayerDataManager {
                     }
                 }
 
-                // Load custom hotbar (slots 3-8) - stored as Map<Integer, Map<String,Object>> serialized ItemStacks
+                // Load custom hotbar (slots 3-8) - stored as Map<Integer, Base64> via serializeAsBytes (robust for PDC/FMM)
                 try {
                     String customHotbarJson = null;
                     try { customHotbarJson = rs.getString("custom_hotbar"); } catch (SQLException ignored) {}
                     if (customHotbarJson != null && !customHotbarJson.isEmpty()) {
-                        Map<String, Map<String,Object>> raw = gson.fromJson(customHotbarJson, new TypeToken<Map<String, Map<String,Object>>>() {}.getType());
-                        if (raw != null) {
-                            Map<Integer, ItemStack> custom = new HashMap<>();
-                            for (Map.Entry<String, Map<String,Object>> e : raw.entrySet()) {
-                                try {
-                                    int slot = Integer.parseInt(e.getKey());
-                                    ItemStack item = ItemStack.deserialize(e.getValue());
-                                    custom.put(slot, item);
-                                } catch (Exception ex) {
-                                    plugin.getLogger().warning("Failed to deserialize custom hotbar slot " + e.getKey() + " for " + player.getName());
+                        // Try new format first (Base64), fallback to old Map<String,Map> for backwards compat
+                        try {
+                            Map<String, String> rawBase64 = gson.fromJson(customHotbarJson, new TypeToken<Map<String, String>>() {}.getType());
+                            if (rawBase64 != null && !rawBase64.isEmpty() && rawBase64.values().iterator().next().length() > 100) {
+                                Map<Integer, ItemStack> custom = new HashMap<>();
+                                for (Map.Entry<String, String> e : rawBase64.entrySet()) {
+                                    try {
+                                        int slot = Integer.parseInt(e.getKey());
+                                        byte[] bytes = java.util.Base64.getDecoder().decode(e.getValue());
+                                        try (java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(bytes);
+                                             org.bukkit.util.io.BukkitObjectInputStream ois = new org.bukkit.util.io.BukkitObjectInputStream(bis)) {
+                                            ItemStack item = (ItemStack) ois.readObject();
+                                            custom.put(slot, item);
+                                        }
+                                    } catch (Exception ex) {
+                                        plugin.getLogger().warning("Failed to deserialize custom hotbar slot (Base64) " + e.getKey() + " for " + player.getName());
+                                    }
                                 }
+                                data.customHotbar = custom;
+                            } else throw new Exception("Not Base64 format");
+                        } catch (Exception notBase64) {
+                            // Fallback old format: Map<String, Map<String,Object>> via ItemStack.deserialize
+                            Map<String, Map<String,Object>> raw = gson.fromJson(customHotbarJson, new TypeToken<Map<String, Map<String,Object>>>() {}.getType());
+                            if (raw != null) {
+                                Map<Integer, ItemStack> custom = new HashMap<>();
+                                for (Map.Entry<String, Map<String,Object>> e : raw.entrySet()) {
+                                    try {
+                                        int slot = Integer.parseInt(e.getKey());
+                                        ItemStack item = ItemStack.deserialize(e.getValue());
+                                        custom.put(slot, item);
+                                    } catch (Exception ex) {
+                                        plugin.getLogger().warning("Failed to deserialize custom hotbar slot " + e.getKey() + " for " + player.getName());
+                                    }
+                                }
+                                data.customHotbar = custom;
                             }
-                            data.customHotbar = custom;
                         }
                     }
                 } catch (Exception e) {
@@ -157,13 +180,18 @@ public class PlayerDataManager {
             // Ensure custom_hotbar column exists (migration)
             try { conn.createStatement().execute("ALTER TABLE player_data ADD COLUMN custom_hotbar TEXT"); } catch (SQLException ignored) {}
 
-            // Serialize custom hotbar
+            // Serialize custom hotbar as Base64 via BukkitObjectOutputStream (robust for PDC/FMM)
             String customHotbarJson = null;
             if (data.customHotbar != null && !data.customHotbar.isEmpty()) {
-                Map<String, Map<String,Object>> serial = new HashMap<>();
+                Map<String, String> serial = new HashMap<>();
                 for (Map.Entry<Integer, ItemStack> e : data.customHotbar.entrySet()) {
                     try {
-                        serial.put(String.valueOf(e.getKey()), e.getValue().serialize());
+                        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                        try (org.bukkit.util.io.BukkitObjectOutputStream oos = new org.bukkit.util.io.BukkitObjectOutputStream(bos)) {
+                            oos.writeObject(e.getValue());
+                        }
+                        String b64 = java.util.Base64.getEncoder().encodeToString(bos.toByteArray());
+                        serial.put(String.valueOf(e.getKey()), b64);
                     } catch (Exception ex) {
                         plugin.getLogger().warning("Failed to serialize custom hotbar slot " + e.getKey());
                     }

@@ -34,18 +34,7 @@ public class HotbarLockListener implements Listener {
         this.plugin = plugin;
         this.lockedKey = new NamespacedKey(plugin, "frost_locked");
         this.isFloodgatePresent = Bukkit.getPluginManager().getPlugin("floodgate") != null;
-
-        // INSTANT periodic check - no delays
-        boolean instantReplace = plugin.getConfig().getBoolean("settings.instant-item-replace", true);
-        long checkInterval = instantReplace ? 40L : 80L; // 2s or 4s
-
-        plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
-            for (Player player : plugin.getServer().getOnlinePlayers()) {
-                if (isLocked(player)) {
-                    giveHotbarItems(player); // INSTANT - no delay
-                }
-            }
-        }, 20L, checkInterval);
+        // Removed periodic ticker (was 40L/80L) - now event-driven only via PlayerJoin/Respawn/InventoryClick/Swap/GameModeChange for performance
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -123,14 +112,12 @@ public class HotbarLockListener implements Listener {
     private boolean isLockedSlot(int slot, PlayerDataManager.PlayerData data) {
         // Fixed core slots 0,1,2 always locked (Spear, Mace, Wind Charge)
         if (slot >= 0 && slot <= 2) return true;
-        // Slots 3-8 locked if either customHotbar has entry or profile defines it (customizable but locked from manual move - must use /inventory GUI)
+        // Slots 3-8: only locked if they actually contain a custom or profile item - empty slots are not locked (allows normal inventory use)
         if (slot >= 3 && slot <= 8) {
             if (data.customHotbar != null && data.customHotbar.containsKey(slot)) return true;
             Profile profile = plugin.getProfileManager().getProfile(data.currentProfile);
             if (profile != null && profile.getHotbarItems().containsKey(slot)) return true;
-            // Even empty customizable slots are considered locked areas (prevent shift-click nonsense) - we still block manual inventory manipulation
-            // But allow empty slots to be managed via customizer only
-            return true;
+            return false;
         }
         return false;
     }
