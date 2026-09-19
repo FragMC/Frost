@@ -3,20 +3,19 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.stufy.fragmc</groupId>
   <artifactId>frost</artifactId>
-  <version>1.0.0</version>
+  <version>2.0.10-alpha</version>
   <build>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.11.0</version>
+        <version>3.13.0</version>
         <configuration>
-          <source>21</source>
-          <target>21</target>
+          <release>25</release>
         </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.5.0</version>
+        <version>3.6.2</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -53,12 +52,21 @@
       <id>opencollab-releases</id>
       <url>https://repo.opencollab.dev/maven-releases/</url>
     </repository>
+    <repository>
+      <id>magmaguy-repo-releases</id>
+      <url>https://repo.magmaguy.com/releases</url>
+    </repository>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages - FragMC</name>
+      <url>https://maven.pkg.github.com/FragMC/Icedspear</url>
+    </repository>
   </repositories>
   <dependencies>
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.21.1-R0.1-SNAPSHOT</version>
+      <version>26.2.build.123-stable</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -79,9 +87,22 @@
       <version>2.2.0-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>com.magmaguy</groupId>
+      <artifactId>FreeMinecraftModels</artifactId>
+      <version>2.7.1</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/FragMC/Frost</url>
+    </repository>
+  </distributionManagement>
   <properties>
-    <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.version>25</java.version>
   </properties>
 </project>
